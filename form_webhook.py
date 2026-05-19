@@ -12,6 +12,9 @@ def form_webhook_to_query(data: dict) -> Query:
 
         match data["update_type"]:
             case "message_created":
+                text = data["message"]["body"]["text"]
+                if list(text)[0] == "/":
+                    return Query(event=Event.MESSAGE_COMMAND("".join(list(text)[1:])), message=Message(**data["message"]))
                 return Query(event=Event.MESSAGE_CREATED, message=Message(**data["message"]))
 
             case "message_callback":

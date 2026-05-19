@@ -8,8 +8,11 @@ from pydantic import BaseModel, field_validator
 
 from callback.payload_schemes import Payload
 from callback.payload_functions import restore_payload
+from core.config import bot_info
 from requests.requests_schemes import NewMessageData, Attachments
 from requests.requests_functions import *
+from status.status_shemes import *
+from status.status_crud import *
 
 
 def create_message(
@@ -110,6 +113,35 @@ class MessageMixin(BaseModel):
 
     async def delete(self):
         await delete_message(self.body.mid)
+
+    async def status(
+            self, status: Status | str, is_background: bool = False, send_callback: bool = True
+    ) -> None:
+        user_id = (
+            self.sender.user_id
+            if self.sender.user_id != bot_info.my_id
+            else self.recipient.user_id
+        )
+
+        if isinstance(status, str):
+            status = Status(value=status, is_background=is_background, send_callback=send_callback)
+        else:
+            status = Status(value=status.value, is_background=is_background, send_callback=send_callback)
+
+        from status.status_crud import set_status
+
+        await set_status(user_id, status)
+
+    async def clear_status(self):
+        user_id = (
+            self.sender.user_id
+            if self.sender.user_id != bot_info.my_id
+            else self.recipient.user_id
+        )
+
+        from status.status_crud import clear_status
+
+        await clear_status(user_id)
 
 
 class Message(MessageMixin):

@@ -1,3 +1,3 @@
-__all__ = ["message_handler"]
+__all__ = ["help", "new_list", "view_list"]
 
-from .main_functions import message_handler
+from .main_functions import *

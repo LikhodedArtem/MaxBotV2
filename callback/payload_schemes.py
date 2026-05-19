@@ -141,15 +141,17 @@ class Inner(BaseModel):
     def prepare_value(cls, v: str | list[str] | None) -> list[str]:
         """value на входе может быть str | list[str] | None, но хранится в виде list[str]"""
 
-        return cls.value_to_list(v)
+        if isinstance(v, str):
+            return [v.lower()]
+        if v is None:
+            return []
+        return list(map(lambda x: x.lower(), v))
 
     def __add__(self, other) -> Inner:
         """Inner + Inner = list"""
 
         if isinstance(other, Inner):
-            l1 = self.value_to_list(self.value)
-            l2 = other.value_to_list(other.value)
-            return Inner(value=l1 + l2)
+            return Inner(value=self.value + other.value)
 
         raise ValueError("Inner не может быть сложен ни с чем кроме Inner")
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["Keyboard", ""]
+__all__ = ["Keyboard", "Keyboards"]
 
 from uuid import UUID
 
@@ -21,13 +21,13 @@ class Keyboards:
     ) -> Keyboard:
         p = PayloadStart(type="list", uuid=obj_uuid, action="change")
 
-        btn1 = await CallbackButton.create("Название", p.add(inner="title"))
-        btn2 = await CallbackButton.create("Описание", p.add(inner="description"))
-        btn3 = await CallbackButton.create("Тип", p.add(inner="type"))
-        btn4 = await CallbackButton.create(
+        btn1 = CallbackButton.create("Название", p.add(inner="title"))
+        btn2 = CallbackButton.create("Описание", p.add(inner="description"))
+        btn3 = CallbackButton.create("Тип", p.add(inner="type"))
+        btn4 = CallbackButton.create(
             "Содержимое", p.add(inner=["values", "start"])
         )
-        btn5 = await CallbackButton.create(
+        btn5 = CallbackButton.create(
             "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
         )
 
@@ -37,7 +37,7 @@ class Keyboards:
 
     @classmethod
     async def reg(cls) -> Keyboard:
-        btn1 = await RequestContactButton.create("Отправить данные")
+        btn1 = RequestContactButton.create("Отправить данные")
 
         keyboard = [[btn1]]
 
@@ -53,8 +53,8 @@ class Keyboards:
     ) -> Keyboard:
         p = PayloadStart(type=type, uuid=obj_uuid, action=action, inner=inner)
 
-        btn1 = await CallbackButton.create("✅Да", p.add(inner="yes"))
-        btn2 = await CallbackButton.create("❌Нет", p.add(inner="no"))
+        btn1 = CallbackButton.create("✅Да", p.add(inner="yes"))
+        btn2 = CallbackButton.create("❌Нет", p.add(inner="no"))
 
         keyboard = [[btn1, btn2]]
 
@@ -64,12 +64,12 @@ class Keyboards:
     async def change_list_values(cls, obj_uuid: UUID) -> Keyboard:
         p = PayloadStart(type="list", uuid=obj_uuid, action="change", inner="values")
 
-        btn1 = await CallbackButton.create("➕Добавить", p.add(inner=["add", "get"]))
-        btn2 = await CallbackButton.create("🗑Удалить", p.add(inner=["delete", "get"]))
-        btn3 = await CallbackButton.create(
+        btn1 = CallbackButton.create("➕Добавить", p.add(inner=["add", "get"]))
+        btn2 = CallbackButton.create("🗑Удалить", p.add(inner=["delete", "get"]))
+        btn3 = CallbackButton.create(
             "✏️Изменить", p.add(inner=["change", "get_id"])
         )
-        btn4 = await CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
+        btn4 = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
 
         keyboard = [[btn1, btn2], [btn3, btn4]]
 
@@ -81,13 +81,13 @@ class Keyboards:
     ) -> Keyboard:
         p = PayloadStart(type="list", uuid=obj_uuid, action="change", inner="value")
 
-        btn1 = await CallbackButton.create(
+        btn1 = CallbackButton.create(
             "✏️Изменить", p.add(inner=["change", f"{value_id}"])
         )
-        btn2 = await CallbackButton.create(
+        btn2 = CallbackButton.create(
             "🗑Удалить", p.add(inner=["delete", f"{value_id}"])
         )
-        btn3 = await CallbackButton.create(
+        btn3 = CallbackButton.create(
             "➡️Вернуться", p.add(inner=["escape", came_from])
         )
 

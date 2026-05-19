@@ -1,0 +1,55 @@
+__all__ = ["mark_status_to_query", "create_payload_status"]
+
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+from broker.event_broker import Query
+from broker.event import Event
+from callback.payload_schemes import Payload, PayloadCheck, Inner
+from status.status_shemes import *
+from status.status_crud import get_status
+from messages.message_schemes import Callback
+
+
+def create_payload_status(
+    type: str,
+    action: str,
+    uuid: Optional[UUID] = None,
+    inner: Optional[str | list[str]] = None,
+) -> Status:
+    """Функция для быстрого создания Payload статуса"""
+
+    payload = Payload(type=type, uuid=uuid, action=action, inner=Inner(value=inner))
+    status = Status(value=payload)
+
+    return status
+
+
+async def mark_status_to_query(query: Query) -> Query:
+    if query.message is not None:
+        query.status = await get_status(query.message.sender.user_id)
+    return query
+
+
+# def get_query_from_status(query: Query) -> Query | None:
+#     if (query.message is not None
+#         and query.callback is None
+#         and isinstance(query.status, Status)
+#         and query.status.is_payload
+#         and query.status.send_callback):
+#
+#         timestamp = int(datetime.now().timestamp() * 1000)
+#
+#         new_callback = Callback(
+#             timestamp=timestamp,
+#             callback_id="status_callback",
+#             payload=query.status.value,
+#             user=query.message.sender,
+#             type="status",
+#         )
+#
+#         new_query = Query(event=Event.STATUS_CALLBACK, callback=new_callback, message=query.message)
+#
+#         return new_query
+#     return None
