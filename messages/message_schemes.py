@@ -73,7 +73,7 @@ class MessageMixin(BaseModel):
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
     ) -> Message:
-        message_data = await create_message(
+        message_data = create_message(
             text, type, link, payload, notify, format, latitude, longitude
         )
 
@@ -102,7 +102,7 @@ class MessageMixin(BaseModel):
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
     ) -> None:
-        message_data = await super().create_message(
+        message_data = create_message(
             text, type, link, payload, notify, format, latitude, longitude
         )
 

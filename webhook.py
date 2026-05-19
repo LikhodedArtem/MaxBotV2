@@ -4,6 +4,11 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from broker import broker
+from form_webhook import form_webhook_to_query
+
+from handlers import *
+
 app = FastAPI()
 
 
@@ -19,9 +24,13 @@ async def webhook(request: Request):
     data = json.loads(body.decode())
 
     print("===webhook", data)
+    query = form_webhook_to_query(data)
+    print("===webhook", query)
+
+    await broker.publish(query)
 
     return JSONResponse(status_code=200, content={"status": "ok"})
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=80, reload=True)
+    uvicorn.run("webhook:app", host="0.0.0.0", port=80, reload=True)

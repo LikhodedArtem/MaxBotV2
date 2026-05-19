@@ -7,7 +7,7 @@ from typing import Optional, Literal, Any, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-from buttons.keyboards import Keyboard
+from buttons.keyboards import Button
 
 
 class MixinMyRequest(BaseModel, ABC):
@@ -87,7 +87,7 @@ class ContactPayload(BaseModel):
 
 
 class InlineKeyboardPayload(BaseModel):
-    buttons: Keyboard = None
+    buttons: list[list[Button]] = None
 
 
 class Attachments(BaseModel):
