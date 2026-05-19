@@ -11,6 +11,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from messages.message_schemes import Message, ContactMessage, Callback
+from callback.payload_schemes import Payload
 
 
 class Event(Enum):
@@ -24,6 +25,35 @@ class Query(BaseModel):
     contact_message: Optional[ContactMessage] = None
     callback: Optional[Callback] = None
 
+    @property
+    def payload(self) -> Payload | None :
+        if self.callback is not None:
+            return self.callback.payload
+        return None
+
+    @property
+    def type(self) -> str | None:
+        if self.payload is not None:
+            return self.payload.type
+        return None
+
+    @property
+    def obj_uuid(self) -> UUID | None:
+        if self.payload is not None:
+            return self.payload.uuid
+        return None
+
+    @property
+    def action(self) -> str | None:
+        if self.payload is not None:
+            return self.payload.action
+        return None
+
+    @property
+    def inner(self) -> list[str] | None:
+        if self.payload is not None:
+            return self.payload.inner.value
+        return None
 
 Handler = Callable[..., Awaitable[None]]
 
@@ -77,6 +107,11 @@ class EventBroker:
             "message": query.message,
             "contact_message": query.contact_message,
             "callback": query.callback,
+            "payload": query.payload,
+            "payload_type": query.type,
+            "payload_uuid": query.obj_uuid,
+            "payload_action": query.action,
+            "payload_inner": query.inner,
         }
 
         kwargs = {}
