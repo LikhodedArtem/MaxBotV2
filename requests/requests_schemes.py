@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["NewMessageData"]
+__all__ = ["NewMessageData", "MyRequest", "MyDeleteRequest", "Attachments"]
 
 from abc import ABC, abstractmethod
 from typing import Optional, Literal, Any, Union
