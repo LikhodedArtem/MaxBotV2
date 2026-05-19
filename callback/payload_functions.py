@@ -9,11 +9,11 @@ from .payload_schemes import *
 __all__ = ["convert_payload", "restore_payload"]
 
 
-async def convert_payload(payload: Payload) -> str:
+def convert_payload(payload: Payload) -> str:
     """Payload -> str
 
     Args:
-        payload: Payload для конвертирования
+        payload: Payload для конвертирования в строку
 
     """
 
@@ -28,11 +28,11 @@ async def convert_payload(payload: Payload) -> str:
     return answer
 
 
-async def restore_payload(payload: str) -> Payload:
+def restore_payload(payload: str) -> Payload:
     """str -> Payload
 
     Args:
-        payload: Payload для восстановления
+        payload: строка для восстановления в Payload
 
     """
 

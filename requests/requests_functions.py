@@ -15,11 +15,7 @@ async def send_message(
     user_id: Optional[int] = None,
     chat_id: Optional[int] = None,
 ) -> httpx.Response:
-    params = (
-        {"user_id": user_id}
-        if user_id is not None
-        else {"chat_id": chat_id}
-    )
+    params = {"user_id": user_id} if user_id is not None else {"chat_id": chat_id}
 
     request = await MyRequest(
         url=request_settings.url + "/messages",
@@ -28,13 +24,14 @@ async def send_message(
         json=message_data,
     ).json_data()
 
-
     async with httpx.AsyncClient() as client:
         response = await client.post(**request)
     return response
 
 
-async def edit_message(message_data: dict | NewMessageData, message_id: str) -> httpx.Response:
+async def edit_message(
+    message_data: dict | NewMessageData, message_id: str
+) -> httpx.Response:
     params = {"message_id": message_id}
 
     request = await MyRequest(

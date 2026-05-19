@@ -38,13 +38,19 @@ class EventBroker:
     def unsubscribe(self, event: Event, handler: Handler) -> None:
         self.subscribers[event].discard(handler)
 
-    def check(self, on_event: Event, func: Optional[Callable[[Any], Awaitable[bool]]] = None, args:  Optional[tuple[Any]] = None):
+    def check(
+        self,
+        on_event: Event,
+        func: Optional[Callable[[Any], Awaitable[bool]]] = None,
+        args: Optional[tuple[Any]] = None,
+    ):
         def decorator(handler: Handler) -> Handler:
             async def wrapper(query: Query) -> None:
                 if None not in (func, args):
                     kwargs = self._build_handler_kwargs(handler, query)
                     allowed = await func(*args, **kwargs)
-                    if not allowed: return
+                    if not allowed:
+                        return
 
                 try:
                     kwargs = self._build_handler_kwargs(handler, query)
@@ -91,6 +97,7 @@ class EventBroker:
 
     async def start(self, query: Query) -> None:
         handlers = self.subscribers.get(query.event, set())
-        if not handlers: return
+        if not handlers:
+            return
 
         await asyncio.gather(*(handler(query) for handler in handlers))

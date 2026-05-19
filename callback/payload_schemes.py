@@ -1,11 +1,27 @@
 from __future__ import annotations
 
-__all__ = [""]
+__all__ = ["Payload", "PayloadStart", "PayloadCheck", "Inner"]
 
 from uuid import UUID
 from typing import Optional, Any
 
 from pydantic import BaseModel, Field, field_validator
+
+"""
+Построение payload:
+
+    Предполагаемый вид:
+        "t=...&u=...&a=...&i1..."
+
+    & - разделитель
+    t=... - type, определять тип объекта
+    a=... - action, основной способ как сортировать payload
+    u=... - uuid, находить нужный объект
+    i1=... - inner1 (может быть 2, 3 ...), подгруппа action,
+    позволяет делать делать более удобное распределение payload
+
+"""
+
 
 class PayloadMixin(BaseModel):
     uuid: Optional[UUID] = None
@@ -58,7 +74,7 @@ class PayloadStart(PayloadMixin):
     type: str
     action: Optional[str] = None
 
-    async def add(
+    def add(
         self,
         type: Optional[str] = None,
         action: Optional[str] = None,
@@ -91,7 +107,7 @@ class PayloadStart(PayloadMixin):
 
         from .payload_functions import convert_payload
 
-        return await convert_payload(data)
+        return convert_payload(data)
 
 
 class PayloadCheck(PayloadMixin):
@@ -134,3 +150,19 @@ class Inner(BaseModel):
             l1 = self.value_to_list(self.value)
             l2 = other.value_to_list(other.value)
             return Inner(value=l1 + l2)
+
+        raise ValueError("Inner не может быть сложен ни с чем кроме Inner")
+
+    def __eq__(self, other: Inner) -> bool:
+        if isinstance(other, Inner):
+            return self.value == other.value
+        raise NotImplemented
+
+    def __contains__(self, other: Any) -> bool:
+        return other in self.value
+
+    def __iter__(self):
+        return iter(self.value)
+
+    def __len__(self) -> int:
+        return len(self.value)

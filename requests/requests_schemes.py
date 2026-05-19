@@ -107,18 +107,18 @@ class Attachments(BaseModel):
 
     @classmethod
     def create(
-            cls,
-            type: Literal[
-                "base_text",
-                "video",
-                "audio",
-                "file",
-                "sticker",
-                "contact",
-                "inline_keyboard",
-                "location",
-            ] = "base_text",
-            data: Optional[dict[str, Any]] = None
+        cls,
+        type: Literal[
+            "base_text",
+            "video",
+            "audio",
+            "file",
+            "sticker",
+            "contact",
+            "inline_keyboard",
+            "location",
+        ] = "base_text",
+        data: Optional[dict[str, Any]] = None,
     ) -> list[Attachments] | None:
 
         if type == "base_text":

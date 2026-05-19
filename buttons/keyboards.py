@@ -22,9 +22,7 @@ class Keyboards:
         p = PayloadStart(type="list", uuid=obj_uuid, action="change")
 
         btn1 = await CallbackButton.create("Название", p.add(inner="title"))
-        btn2 = await CallbackButton.create(
-            "Описание", p.add(inner="description")
-        )
+        btn2 = await CallbackButton.create("Описание", p.add(inner="description"))
         btn3 = await CallbackButton.create("Тип", p.add(inner="type"))
         btn4 = await CallbackButton.create(
             "Содержимое", p.add(inner=["values", "start"])
@@ -66,12 +64,8 @@ class Keyboards:
     async def change_list_values(cls, obj_uuid: UUID) -> Keyboard:
         p = PayloadStart(type="list", uuid=obj_uuid, action="change", inner="values")
 
-        btn1 = await CallbackButton.create(
-            "➕Добавить", p.add(inner=["add", "get"])
-        )
-        btn2 = await CallbackButton.create(
-            "🗑Удалить", p.add(inner=["delete", "get"])
-        )
+        btn1 = await CallbackButton.create("➕Добавить", p.add(inner=["add", "get"]))
+        btn2 = await CallbackButton.create("🗑Удалить", p.add(inner=["delete", "get"]))
         btn3 = await CallbackButton.create(
             "✏️Изменить", p.add(inner=["change", "get_id"])
         )

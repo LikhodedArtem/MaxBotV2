@@ -1,8 +1,9 @@
-import uvicorn
 import json
 
-from fastapi import FastAPI, Request, BackgroundTasks
+import uvicorn
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+
 app = FastAPI()
 
 
@@ -18,8 +19,6 @@ async def webhook(request: Request):
     data = json.loads(body.decode())
 
     print("===webhook", data)
-
-
 
     return JSONResponse(status_code=200, content={"status": "ok"})
 
