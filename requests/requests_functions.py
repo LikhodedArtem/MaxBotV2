@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["send_message"]
+__all__ = ["send_message", "edit_message", "delete_message", "callback_answer"]
 
 from typing import Optional
 
