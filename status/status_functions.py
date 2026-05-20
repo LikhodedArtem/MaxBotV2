@@ -1,5 +1,6 @@
 __all__ = ["add_status_query", "create_payload_status"]
 
+from copy import deepcopy
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -7,6 +8,7 @@ from uuid import UUID
 from broker.event_broker import Query
 from broker.event import Event
 from callback.payload_schemes import Payload, PayloadCheck, Inner
+from core.config import bot_info
 from status.status_shemes import *
 from status.status_crud import get_status
 from messages.message_schemes import Callback
@@ -28,14 +30,18 @@ def create_payload_status(
 
 async def add_status_query(query: Query) -> tuple[Query, ...]:
     if query.message is not None:
-        status = await get_status(query.message.sender.user_id)
+        sender_id = query.message.sender.user_id
+        recipient_id = query.message.recipient.user_id
+
+        status = await get_status(sender_id if sender_id != bot_info.my_id else recipient_id)
         if status is None:
             return (query,)
 
+        status_query = deepcopy(query)
         if status.is_str:
-            status_query = Query(event=Event.STATUS_CALLBACK(name=status.value))
+            status_query.event=Event.STATUS_CALLBACK(name=status.value)
         else:
-            status_query = Query(event=Event.STATUS_CALLBACK(payload=status.value))
+            status_query.event=Event.STATUS_CALLBACK(payload=status.value)
 
         return query, status_query
 

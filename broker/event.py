@@ -7,27 +7,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 from callback.payload_schemes import Payload
-from status.status_shemes import Status
-
-
-@dataclass(frozen=True)
-class CommandEvent:
-    command: str
-
-
-@dataclass(frozen=True)
-class PayloadEvent:
-    payload: Optional[Payload] = None
-
-
-@dataclass(frozen=True)
-class StatusCallback(PayloadEvent):
-    name: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class MessageCallback(PayloadEvent):
-    pass
 
 
 class Event(Enum):
@@ -70,6 +49,28 @@ class Event(Enum):
             raise ValueError("Не правильный формат данных для STATUS_CALLBACK")
 
         raise TypeError(f"Событие {self.name} нельзя вызвать с аргументом")
+
+
+@dataclass(frozen=True)
+class CommandEvent:
+    command: str
+
+
+@dataclass(frozen=True)
+class PayloadEvent:
+    my_event: Event
+    payload: Optional[Payload] = None
+
+
+@dataclass(frozen=True)
+class StatusCallback(PayloadEvent):
+    my_event: Event = Event.STATUS_CALLBACK
+    name: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class MessageCallback(PayloadEvent):
+    my_event: Event = Event.MESSAGE_CALLBACK
 
 
 AllEvents = CommandEvent | StatusCallback | MessageCallback | Event

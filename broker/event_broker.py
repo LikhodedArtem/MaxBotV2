@@ -68,17 +68,15 @@ class EventBroker:
             self.subscribe_on_payload_event(event, handler)
 
     def subscribe_on_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
-        if event not in self.subscribers:
-            self.subscribers[Event.MESSAGE_CALLBACK] = {"__handlers__": set()}
+        if event.my_event not in self.subscribers:
+            self.subscribers[event.my_event] = {"__handlers__": set()}
 
-        current_node = self.subscribers[Event.MESSAGE_CALLBACK]
+        current_node = self.subscribers[event.my_event]
 
         if hasattr(event, "name") and event.name is not None:
            if event.name not in current_node:
                current_node[event.name] = {"__handlers__": set()}
            current_node = current_node[event.name]
-
-        print(event.payload)
 
         if event.payload is None:
             pass
@@ -100,10 +98,10 @@ class EventBroker:
             self.unsubscribe_from_payload_event(event, handler)
 
     def unsubscribe_from_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
-        if event not in self.subscribers:
+        if event.my_event not in self.subscribers:
             return
 
-        current_node = self.subscribers[event]
+        current_node = self.subscribers[event.my_event]
 
         if hasattr(event, "name") and event.name is not None:
             current_node = self.subscribers[event.name]
@@ -154,7 +152,7 @@ class EventBroker:
 
                 except Exception:
                     logging.exception(
-                        "Неизвестная ошибка в handler '%s'",
+                        "Ошибка в handler '%s'",
                         handler.__name__,
                     )
 
@@ -178,8 +176,10 @@ class EventBroker:
             return self.get_handlers_from_payload_event(event)
 
     def get_handlers_from_payload_event(self, event: PayloadEvent) -> set[Handler]:
-        print("===event", event)
-        current_node = self.subscribers[event]
+        if event.my_event not in self.subscribers:
+            return set()
+
+        current_node = self.subscribers[event.my_event]
 
         handlers = current_node["__handlers__"]
 
@@ -201,8 +201,6 @@ class EventBroker:
                     return handlers
 
             handlers |= self.get_remain_handlers(current_node)
-
-        print("===payload_handlers", self.get_remain_handlers(current_node))
 
         return handlers
 

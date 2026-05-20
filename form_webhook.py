@@ -2,7 +2,8 @@ import logging
 
 from broker.event import Event
 from broker.event_broker import Query
-from messages.message_schemes import Message, ContactMessage, Callback
+from messages.message_schemes import Message, Callback
+from callback.payload_functions import restore_payload
 
 
 def form_webhook_to_query(data: dict) -> Query:
@@ -18,7 +19,9 @@ def form_webhook_to_query(data: dict) -> Query:
                 return Query(event=Event.MESSAGE_CREATED, message=Message(**data["message"]))
 
             case "message_callback":
-                return Query(event=Event.MESSAGE_CALLBACK, message=Message(**data["message"]), callback=Callback(**data["callback"]))
+                payload = restore_payload(data["callback"]["payload"])
+                return Query(event=Event.MESSAGE_CALLBACK(payload=payload), message=Message(**data["message"]), callback=Callback(**data["callback"]))
+
     except Exception:
         logging.exception(
             "Не получилось отсортировать данные из webhook: '%s'",

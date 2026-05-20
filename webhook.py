@@ -11,8 +11,6 @@ from status.status_functions import add_status_query
 
 from handlers import *
 
-print(broker.subscribers)
-
 app = FastAPI()
 
 
