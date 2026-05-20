@@ -8,15 +8,13 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from broker.event import Event, CommandEvent
+from broker.event import *
 from messages.message_schemes import Message, ContactMessage, Callback
 from callback.payload_schemes import Payload
-from status.status_shemes import Status
 
 
 class Query(BaseModel):
-    event: Optional[Event | CommandEvent] = None
-    status: Optional[Status] = None
+    event: Optional[AllEvents] = None
     message: Optional[Message] = None
     contact_message: Optional[ContactMessage] = None
     callback: Optional[Callback] = None
@@ -58,55 +56,74 @@ Predicate = Callable[..., Awaitable[bool]]
 
 class EventBroker:
     def __init__(self):
-        self.subscribers: dict[Event | str, set[Handler] | dict] = {}
+        self.subscribers: dict[AllEvents, dict[str, set | dict] | set[Handler]] = {}
 
-    def subscribe_on_event(self, event: Event, handler: Handler) -> None:
-        if event not in self.subscribers:
-            self.subscribers[event] = set()
-        self.subscribers[event].add(handler)
+    def subscribe_on_event(self, event: AllEvents, handler: Handler) -> None:
+        if not isinstance(event, PayloadEvent):
+            if event not in self.subscribers:
+                self.subscribers[event] = set()
+            self.subscribers[event].add(handler)
 
-    def subscribe_on_status(self, status: Status, handler: Handler) -> None:
-        current_node = self.subscribers
-
-        if isinstance(status.value, str):
-            path = [status.value]
         else:
-            payload = status.value
+            self.subscribe_on_payload_event(event, handler)
+
+    def subscribe_on_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
+        if event not in self.subscribers:
+            self.subscribers[Event.MESSAGE_CALLBACK] = {"__handlers__": set()}
+
+        current_node = self.subscribers[Event.MESSAGE_CALLBACK]
+
+        if hasattr(event, "name") and event.name is not None:
+           if event.name not in current_node:
+               current_node[event.name] = {"__handlers__": set()}
+           current_node = current_node[event.name]
+
+        print(event.payload)
+
+        if event.payload is None:
+            pass
+        else:
+            payload = event.payload
             path = [payload.type, payload.action] + payload.inner.value
 
-        for i, key in enumerate(path):
-            if key not in current_node:
-                current_node[key] = {}
-            current_node = current_node[key]
-
-            if i > 0 and "__handlers__" not in current_node:
-                current_node["__handlers__"] = set()
+            for i, key in enumerate(path):
+                if key not in current_node:
+                    current_node[key] = {"__handlers__": set()}
+                current_node = current_node[key]
 
         current_node["__handlers__"].add(handler)
 
-    def unsubscribe_on_event(self, event: Event | CommandEvent, handler: Handler) -> None:
-        self.subscribers[event].discard(handler)
-
-    def unsubscribe_on_status(self, status: Status, handler: Handler) -> None:
-        current_node = self.subscribers
-
-        if isinstance(status.value, str):
-            path = [status.value]
+    def unsubscribe_from_event(self, event: AllEvents, handler: Handler) -> None:
+        if not isinstance(event, PayloadEvent):
+            self.subscribers[event].discard(handler)
         else:
-            payload = status.value
+            self.unsubscribe_from_payload_event(event, handler)
+
+    def unsubscribe_from_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
+        if event not in self.subscribers:
+            return
+
+        current_node = self.subscribers[event]
+
+        if hasattr(event, "name") and event.name is not None:
+            current_node = self.subscribers[event.name]
+
+        if event.payload is None:
+            pass
+        else:
+            payload = event.payload
             path = [payload.type, payload.action] + payload.inner.value
 
-        for key in path:
-            if key not in current_node:
-                return
-            current_node = current_node[key]
+            for key in path:
+                if key not in current_node:
+                    return
+                current_node = current_node[key]
 
         current_node["__handlers__"].discard(handler)
 
     def check(
         self,
-        on_event: Optional[Event | CommandEvent | list[Event | CommandEvent]] = None,
-        on_status: Optional[str | dict[str, str] | list[str | dict[str, str]]] = None,
+        on_event: Optional[AllEvents | list[AllEvents]] = None,
         func: Optional[list[Predicate] | Predicate] = None,
         args: Optional[list[tuple[Any, ...] | tuple[Any, ...]]] = None,
     ) -> Callable[[Handler], Handler]:
@@ -150,31 +167,29 @@ class EventBroker:
                 for event in events:
                     self.subscribe_on_event(event, wrapper)
 
-            if on_status is not None:
-                if isinstance(on_status, list):
-                    statuses = on_status
-                else:
-                    statuses = [on_status]
-
-                for status in statuses:
-                    self.subscribe_on_status(Status(value=status), wrapper)
-
             return wrapper
 
         return decorator
 
-    def get_handlers_on_status(self, status: Optional[Status]) -> set[Handler]:
-        if status is None:
-            return set()
-
-        current_node = self.subscribers
-
-        if isinstance(status.value, str):
-            return current_node[status.value]["__handlers__"]
+    def get_handlers_from_event(self, event: AllEvents):
+        if not isinstance(event, PayloadEvent):
+            return self.subscribers.get(event, set())
         else:
-            handlers = set()
+            return self.get_handlers_from_payload_event(event)
 
-            payload = status.value
+    def get_handlers_from_payload_event(self, event: PayloadEvent) -> set[Handler]:
+        print("===event", event)
+        current_node = self.subscribers[event]
+
+        handlers = current_node["__handlers__"]
+
+        if hasattr(event, "name") and event.name is not None:
+            current_node = current_node[event.name]
+
+        if event.payload is None:
+            pass
+        else:
+            payload = event.payload
 
             current_node = current_node[payload.type][payload.action]
 
@@ -185,20 +200,20 @@ class EventBroker:
                 else:
                     return handlers
 
-            handlers |= self.get_all_handlers(current_node)
+            handlers |= self.get_remain_handlers(current_node)
 
-            print("===get_all_handlers", self.get_all_handlers(current_node))
+        print("===payload_handlers", self.get_remain_handlers(current_node))
 
-            return handlers
+        return handlers
 
 
-    def get_all_handlers(self, subscribers: dict):
+    def get_remain_handlers(self, subscribers: dict):
         handlers = set()
         for key in subscribers:
             if key == "__handlers__":
                 handlers |= subscribers[key]
             else:
-                handlers |= self.get_all_handlers(subscribers[key])
+                handlers |= self.get_remain_handlers(subscribers[key])
         return handlers
 
 
@@ -216,8 +231,7 @@ class EventBroker:
             "payload_type": query.payload_type,
             "payload_uuid": query.payload_uuid,
             "payload_action": query.payload_action,
-            "payload_inner": query.payload_inner,
-            "status": query.status,
+            "payload_inner": query.payload_inner
         }
 
         kwargs = {}
@@ -237,22 +251,9 @@ class EventBroker:
         return kwargs
 
     async def publish(self, query: Query) -> None:
-        status = query.status
         event = query.event
-        if status is None or status.is_background:
-            event_handlers = self.subscribers.get(event, set())
-        else:
-            event_handlers = set()
 
-        if status is not None and status.send_callback:
-            status_handlers = self.get_handlers_on_status(status)
-        else:
-            status_handlers = set()
-
-        all_handlers = event_handlers | status_handlers
-
-        print("===publish", status)
-        print("===publish", self.subscribers)
+        all_handlers = self.get_handlers_from_event(event)
 
         if not all_handlers:
             return

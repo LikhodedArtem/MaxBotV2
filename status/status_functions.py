@@ -1,4 +1,4 @@
-__all__ = ["mark_status_to_query", "create_payload_status"]
+__all__ = ["add_status_query", "create_payload_status"]
 
 from datetime import datetime
 from typing import Optional
@@ -26,10 +26,20 @@ def create_payload_status(
     return status
 
 
-async def mark_status_to_query(query: Query) -> Query:
+async def add_status_query(query: Query) -> tuple[Query, ...]:
     if query.message is not None:
-        query.status = await get_status(query.message.sender.user_id)
-    return query
+        status = await get_status(query.message.sender.user_id)
+        if status is None:
+            return (query,)
+
+        if status.is_str:
+            status_query = Query(event=Event.STATUS_CALLBACK(name=status.value))
+        else:
+            status_query = Query(event=Event.STATUS_CALLBACK(payload=status.value))
+
+        return query, status_query
+
+    return (query,)
 
 
 # def get_query_from_status(query: Query) -> Query | None:

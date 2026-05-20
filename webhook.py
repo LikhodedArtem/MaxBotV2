@@ -7,9 +7,11 @@ from fastapi.responses import JSONResponse
 
 from broker import broker
 from form_webhook import form_webhook_to_query
-from status.status_functions import mark_status_to_query
+from status.status_functions import add_status_query
 
 from handlers import *
+
+print(broker.subscribers)
 
 app = FastAPI()
 
@@ -26,12 +28,15 @@ async def webhook(request: Request):
     data = json.loads(body.decode())
 
     print("===webhook", data)
-    query = form_webhook_to_query(data)
-    print("===webhook", query)
 
-    query = await mark_status_to_query(query)
+    start_query = form_webhook_to_query(data)
 
-    await broker.publish(query)
+    queries = await add_status_query(start_query)
+
+    for query in queries:
+        print("===webhook", query)
+
+    await asyncio.gather(*(broker.publish(query) for query in queries))
 
     return JSONResponse(status_code=200, content={"status": "ok"})
 
