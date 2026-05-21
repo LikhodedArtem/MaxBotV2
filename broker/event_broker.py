@@ -35,8 +35,10 @@ class EventBroker:
 
         if hasattr(event, "name") and event.name is not None:
            if event.name not in current_node:
-               current_node[event.name] = {"__handlers__": set()}
-           current_node = current_node[event.name]
+               if "__names__" not in current_node:
+                   current_node["__names__"] = {}
+               current_node["__names__"][event.name] = {"__handlers__": set()}
+           current_node = current_node["__names__"][event.name]
 
         if event.payload is None:
             pass
@@ -64,7 +66,7 @@ class EventBroker:
         current_node = self.subscribers[event.sub_event]
 
         if hasattr(event, "name") and event.name is not None:
-            current_node = self.subscribers[event.name]
+            current_node = current_node["__names__"][event.name]
 
         if event.payload is None:
             pass
@@ -147,7 +149,7 @@ class EventBroker:
         handlers = set()
 
         if hasattr(event, "name") and event.name is not None:
-            current_node = current_node[event.name]
+            current_node = current_node["__names__"][event.name]
 
         if event.payload is None:
             pass

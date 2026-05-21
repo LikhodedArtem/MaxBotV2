@@ -17,13 +17,13 @@ class Keyboards:
     @classmethod
     async def change_list(
         cls,
-        obj_uuid: UUID | Mapped[UUID],
+        payload_uuid: UUID | Mapped[UUID],
     ) -> Keyboard:
-        p = PayloadStart(type="list", uuid=obj_uuid, action="change")
+        p = PayloadStart(type="list", uuid=payload_uuid, action="change")
 
-        btn1 = CallbackButton.create("Название", p.add(inner=["list", "title"]))
-        btn2 = CallbackButton.create("Описание", p.add(inner=["list", "description"]))
-        btn3 = CallbackButton.create("Тип", p.add(inner=["list", "type"]))
+        btn1 = CallbackButton.create("Название", p.add(inner=["field", "title"]))
+        btn2 = CallbackButton.create("Описание", p.add(inner=["field", "description"]))
+        btn3 = CallbackButton.create("Тип", p.add(inner=["field", "type"]))
         btn4 = CallbackButton.create(
             "Содержимое", p.add(inner=["values", "start"])
         )
@@ -47,11 +47,11 @@ class Keyboards:
     async def yes_no(
         cls,
         type: str,
-        obj_uuid: UUID,
+        payload_uuid: UUID,
         action: str,
         inner: str | list[str] | None = None,
     ) -> Keyboard:
-        p = PayloadStart(type=type, uuid=obj_uuid, action=action, inner=inner)
+        p = PayloadStart(type=type, uuid=payload_uuid, action=action, inner=inner)
 
         btn1 = CallbackButton.create("✅Да", p.add(inner="yes"))
         btn2 = CallbackButton.create("❌Нет", p.add(inner="no"))
@@ -61,8 +61,8 @@ class Keyboards:
         return {"buttons": keyboard}
 
     @classmethod
-    async def change_list_values(cls, obj_uuid: UUID) -> Keyboard:
-        p = PayloadStart(type="list", uuid=obj_uuid, action="change", inner="values")
+    async def change_list_values(cls, payload_uuid: UUID) -> Keyboard:
+        p = PayloadStart(type="list", uuid=payload_uuid, action="change", inner="values")
 
         btn1 = CallbackButton.create("➕Добавить", p.add(inner=["add", "get"]))
         btn2 = CallbackButton.create("🗑Удалить", p.add(inner=["delete", "get"]))
@@ -77,9 +77,9 @@ class Keyboards:
 
     @classmethod
     async def change_list_value(
-        cls, obj_uuid: UUID, value_id: int, came_from: str
+        cls, payload_uuid: UUID, value_id: int, came_from: str
     ) -> Keyboard:
-        p = PayloadStart(type="list", uuid=obj_uuid, action="change", inner="value")
+        p = PayloadStart(type="list", uuid=payload_uuid, action="change", inner="value")
 
         btn1 = CallbackButton.create(
             "✏️Изменить", p.add(inner=["change", f"{value_id}"])

@@ -1,5 +1,6 @@
 __all__ = ["help", "view_list"]
 
+from typing import Literal
 from uuid import UUID
 
 from broker import broker
@@ -8,7 +9,7 @@ from buttons.keyboards import Keyboards
 from core.global_names import GN
 from core.models import mylist
 from core.models.db_helper import db_helper
-from crud import create_mylist, get_mylist_with_values_by_uuid, create_user, get_user_by_max_id
+from crud import create_mylist, get_mylist_with_values_by_uuid, create_user, get_user_by_max_id, update_mylist_field
 
 from messages.message_schemes import Message, ContactMessage
 from status.status_functions import create_payload_status
@@ -122,17 +123,62 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
         )
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": "list"}))
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": "field"}))
 async def list_field_get(message: Message, payload_uuid: UUID, payload_inner: list[str]) -> None:
     field = payload_inner[-1]
 
     text = f"✏️Напишите нов{"ый" if field == "type" else "ое"} <b>{GN.get(field).capitalize()}</b>\n"
 
     status = create_payload_status(
-        type="list", uuid=payload_uuid, action="set", inner=field
+        type="list", uuid=payload_uuid, action="set", inner=[]
     )
     print("===request_list_field", message)
 
     await message.status(status)
 
     await message.answer(text)
+
+
+@broker.check(Event.STATUS_CALLBACK(payload={"type": "list", "action": "change", "inner": "list"}))
+async def list_field_set(message: Message, payload_uuid: UUID, payload_inner: list[str]) -> None:
+    field = payload_inner[-1]
+
+    ru_field = GN.get(field)
+
+    text = (
+        f"Новое {ru_field} сохранено✅"
+        if field != "type"
+        else f"Новый {ru_field} сохранён✅"
+    )
+
+    async with db_helper.session_factory() as session:
+        await update_mylist_field(session, payload_uuid, field, message.body.text)
+
+    await message.answer(text)
+    await message.clear_status()
+
+    await view_list(message, payload_uuid)
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": "start"}))
+async def first_delete(message: Message, payload_uuid: UUID) -> None:
+    await message.answer(
+        "Вы уверены, что хотите <b>удалить</b> список?",
+        "inline_keyboard",
+        payload=Keyboards.yes_no(
+            type="list", action="delete", payload_uuid=payload_uuid, inner="first"
+        ),
+    )
+
+    await message.status("List-Delete")
+
+
+@broker.check(Event.STATUS_CALLBACK(name="List-Delete"))
+async def second_delete(message: Message, payload_uuid: UUID) -> None:
+    await message.edit(
+        "Вы <b>точно</b> уверены, что хотите <b>удалить</b> список?",
+        "inline_keyboard",
+        payload=Keyboards.yes_no(
+            type="list", action="delete", payload_uuid=payload_uuid, inner="second"
+        ),
+    )
