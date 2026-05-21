@@ -179,7 +179,7 @@ class EventBroker:
 
 
     @staticmethod
-    def _build_handler_kwargs(func: Callable[..., Any], query: Query, can_be_none: bool = False) -> dict[str, Any]:
+    def _build_handler_kwargs(func: Callable[..., Any], query: Query, can_be_none: bool = True) -> dict[str, Any]:
         sig = inspect.signature(func)
 
         available = {
@@ -193,6 +193,7 @@ class EventBroker:
             "payload_uuid": query.payload_uuid,
             "payload_action": query.payload_action,
             "payload_inner": query.payload_inner
+            "status": query.status,
         }
 
         kwargs = {}

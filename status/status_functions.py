@@ -40,19 +40,22 @@ async def add_status_query(queries: list[Query]) -> list[Query]:
             if status is None:
                 continue
 
-            if not status.is_background:
-                queries = []
+            query.status = status
 
-            if status.send_callback:
-                status_query = deepcopy(query)
-                if status.is_str:
-                    status_query.event=Event.STATUS_CALLBACK(name=status.value)
-                else:
-                    status_query.event=Event.STATUS_CALLBACK(payload=status.value)
+            if not status.is_background or status.send_callback:
+                if not status.is_background:
+                    queries = []
 
-                queries.append(status_query)
+                if status.send_callback:
+                    status_query = deepcopy(query)
+                    if status.is_str:
+                        status_query.event=Event.STATUS_CALLBACK(name=status.value)
+                    else:
+                        status_query.event=Event.STATUS_CALLBACK(payload=status.value)
 
-            break
+                    queries.append(status_query)
+
+                break
 
     return queries
 

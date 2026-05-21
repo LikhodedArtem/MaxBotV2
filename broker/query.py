@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from status.status_shemes import Status
 from .event import AllEvents
 from callback.payload_schemes import Payload
 from messages.message_schemes import Message, ContactMessage, Callback
@@ -15,6 +16,7 @@ class Query(BaseModel):
     message: Optional[Message | ContactMessage] = None
     contact_message: Optional[ContactMessage] = None
     callback: Optional[Callback] = None
+    status: Optional[Status] = None
 
     @property
     def payload(self) -> Payload | None:
