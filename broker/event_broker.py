@@ -192,7 +192,7 @@ class EventBroker:
             "payload_type": query.payload_type,
             "payload_uuid": query.payload_uuid,
             "payload_action": query.payload_action,
-            "payload_inner": query.payload_inner
+            "payload_inner": query.payload_inner,
             "status": query.status,
         }
 
