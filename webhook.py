@@ -13,6 +13,7 @@ from handlers import *
 
 app = FastAPI()
 
+print(broker.subscribers)
 
 @app.get("/ping")
 async def ping_pong():
@@ -27,7 +28,7 @@ async def webhook(request: Request):
 
     print("===webhook", data)
 
-    queries = form_webhook_to_query(data)
+    queries = await form_webhook_to_query(data)
     print(queries)
     queries = await add_status_query(queries)
 

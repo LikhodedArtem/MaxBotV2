@@ -75,19 +75,24 @@ class CommandEvent:
 
 @dataclass(frozen=True)
 class PayloadEvent:
-    my_event: Event
+    sub_event: Event
     payload: Optional[Payload] = None
+
+
+class SubPayloadEvent(Enum):
+    STATUS_CALLBACK = auto()
+    MESSAGE_CALLBACK = auto()
 
 
 @dataclass(frozen=True)
 class StatusCallback(PayloadEvent):
-    my_event: Event = Event.STATUS_CALLBACK
+    sub_event: Event = SubPayloadEvent.STATUS_CALLBACK
     name: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class MessageCallback(PayloadEvent):
-    my_event: Event = Event.MESSAGE_CALLBACK
+    sub_event: Event = SubPayloadEvent.MESSAGE_CALLBACK
 
 
 AllEvents = MessageEvent | CommandEvent | StatusCallback | MessageCallback | Event

@@ -28,10 +28,10 @@ class EventBroker:
             self.subscribe_on_payload_event(event, handler)
 
     def subscribe_on_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
-        if event.my_event not in self.subscribers:
-            self.subscribers[event.my_event] = {"__handlers__": set()}
+        if event.sub_event not in self.subscribers:
+            self.subscribers[event.sub_event] = {}
 
-        current_node = self.subscribers[event.my_event]
+        current_node = self.subscribers[event.sub_event]
 
         if hasattr(event, "name") and event.name is not None:
            if event.name not in current_node:
@@ -58,10 +58,10 @@ class EventBroker:
             self.unsubscribe_from_payload_event(event, handler)
 
     def unsubscribe_from_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
-        if event.my_event not in self.subscribers:
+        if event.sub_event not in self.subscribers:
             return
 
-        current_node = self.subscribers[event.my_event]
+        current_node = self.subscribers[event.sub_event]
 
         if hasattr(event, "name") and event.name is not None:
             current_node = self.subscribers[event.name]
@@ -139,12 +139,12 @@ class EventBroker:
             return self.get_handlers_from_payload_event(event)
 
     def get_handlers_from_payload_event(self, event: PayloadEvent) -> set[Handler]:
-        if event.my_event not in self.subscribers:
+        if event.sub_event not in self.subscribers:
             return set()
 
-        current_node = self.subscribers[event.my_event]
+        current_node = self.subscribers[event.sub_event]
 
-        handlers = current_node["__handlers__"]
+        handlers = set()
 
         if hasattr(event, "name") and event.name is not None:
             current_node = current_node[event.name]
@@ -154,7 +154,15 @@ class EventBroker:
         else:
             payload = event.payload
 
-            current_node = current_node[payload.type][payload.action]
+            if payload.type in current_node:
+                current_node = current_node[payload.type]
+            else:
+                return handlers
+
+            if payload.action in current_node:
+                current_node = current_node[payload.action]
+            else:
+                return handlers
 
             for inner_item in payload.inner.value:
                 handlers |= current_node["__handlers__"]
@@ -164,6 +172,8 @@ class EventBroker:
                     return handlers
 
             handlers |= self.get_remain_handlers(current_node)
+
+        print("===get_handlers_from_payload_event", handlers)
 
         return handlers
 
@@ -179,7 +189,7 @@ class EventBroker:
 
 
     @staticmethod
-    def _build_handler_kwargs(func: Callable[..., Any], query: Query, can_be_none: bool = True) -> dict[str, Any]:
+    def _build_handler_kwargs(func: Callable[..., Any], query: Query, can_be_none: bool = False) -> dict[str, Any]:
         sig = inspect.signature(func)
 
         available = {
@@ -224,6 +234,8 @@ class EventBroker:
         event = query.event
 
         all_handlers = self.get_handlers_from_event(event)
+
+        print("===all_handlers", all_handlers)
 
         if not all_handlers:
             return

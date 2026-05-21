@@ -5,6 +5,8 @@ from uuid import UUID
 from broker import broker
 from broker.event import Event
 from buttons.keyboards import Keyboards
+from core.global_names import GN
+from core.models import mylist
 from core.models.db_helper import db_helper
 from crud import create_mylist, get_mylist_with_values_by_uuid, create_user, get_user_by_max_id
 
@@ -118,3 +120,19 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
         await message.edit(
             text, "inline_keyboard", payload=await Keyboards.change_list(mylist.uuid)
         )
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": "list"}))
+async def list_field_get(message: Message, payload_uuid: UUID, payload_inner: list[str]) -> None:
+    field = payload_inner[-1]
+
+    text = f"✏️Напишите нов{"ый" if field == "type" else "ое"} <b>{GN.get(field).capitalize()}</b>\n"
+
+    status = create_payload_status(
+        type="list", uuid=payload_uuid, action="set", inner=field
+    )
+    print("===request_list_field", message)
+
+    await message.status(status)
+
+    await message.answer(text)

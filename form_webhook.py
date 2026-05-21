@@ -6,7 +6,7 @@ from messages.message_schemes import Message, Callback, ContactMessage
 from callback.payload_functions import restore_payload
 
 
-def form_webhook_to_query(data: dict) -> list[Query]:
+async def form_webhook_to_query(data: dict) -> list[Query]:
     try:
         if "update_type" not in data:
             raise ValueError("В данных из webhook отсутствует update_type")
@@ -42,16 +42,21 @@ def form_webhook_to_query(data: dict) -> list[Query]:
 
             case "message_callback":
                 payload = restore_payload(data["callback"]["payload"])
+                message = Message(**data["message"])
+                callback = Callback(**data["callback"])
 
                 q1 = Query(event=Event.MESSAGE_CALLBACK,
-                           message=Message(**data["message"]),
-                           callback=Callback(**data["callback"])
+                           message=message,
+                           callback=callback
                            )
                 q2 = Query(event=Event.MESSAGE_CALLBACK(payload=payload),
-                           message=Message(**data["message"]),
-                           callback=Callback(**data["callback"]))
+                           message=message,
+                           callback=callback
+                           )
 
                 return [q1, q2]
+
+        return []
 
     except Exception:
         logging.exception(

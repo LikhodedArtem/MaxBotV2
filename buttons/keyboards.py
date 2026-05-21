@@ -21,9 +21,9 @@ class Keyboards:
     ) -> Keyboard:
         p = PayloadStart(type="list", uuid=obj_uuid, action="change")
 
-        btn1 = CallbackButton.create("Название", p.add(inner="title"))
-        btn2 = CallbackButton.create("Описание", p.add(inner="description"))
-        btn3 = CallbackButton.create("Тип", p.add(inner="type"))
+        btn1 = CallbackButton.create("Название", p.add(inner=["list", "title"]))
+        btn2 = CallbackButton.create("Описание", p.add(inner=["list", "description"]))
+        btn3 = CallbackButton.create("Тип", p.add(inner=["list", "type"]))
         btn4 = CallbackButton.create(
             "Содержимое", p.add(inner=["values", "start"])
         )
