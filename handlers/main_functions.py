@@ -5,12 +5,58 @@ from uuid import UUID
 from broker import broker
 from broker.event import Event
 from buttons.keyboards import Keyboards
-from core.models import mylist
 from core.models.db_helper import db_helper
-from crud import create_mylist, get_mylist_with_values_by_uuid
-from messages.message_schemes import Message
+from crud import create_mylist, get_mylist_with_values_by_uuid, create_user, get_user_by_max_id
+
+from messages.message_schemes import Message, ContactMessage
 from status.status_functions import create_payload_status
 from handlers.help_functions import mylist_values_to_form
+
+
+@broker.check(Event.MESSAGE_COMMAND("reg"))
+async def reg_get(message: Message):
+    await message.answer(
+        "📞Для продолжения работы, необходим ваш номер телефона",
+        "inline_keyboard",
+        payload=await Keyboards.reg(),
+    )
+
+    status = create_payload_status(type="bot", action="reg")
+    await message.status(status)
+
+
+@broker.check(Event.STATUS_CALLBACK(payload={"type": "bot", "action": "reg"}))
+async def reg_set(message: ContactMessage):
+    if not isinstance(message, ContactMessage):
+        return
+
+    try:
+        async with db_helper.session_factory() as session:
+            user = await get_user_by_max_id(session, message.sender.user_id)
+            if user is None:
+                user_data = message.sender.model_dump()
+                user_data["chat_id"] = message.recipient.chat_id
+
+                await create_user(session, user_data)
+
+                await message.answer("✅Вы успешно зарегистрировались!")
+            else:
+                await message.answer("✅Вы уже были зарегистрированы!")
+
+        await message.clear_status()
+
+        try:
+            message: Message
+            await help(message=message)
+        except Exception as e:
+            raise ValueError(e)
+
+    except Exception as e:
+        print(e)
+        await message.answer(
+            "❌Что-то пошло не так. Попробуйте заново пройти регистрацию или напишите в техподдержку"
+        )
+        await message.clear_status()
 
 
 @broker.check(Event.MESSAGE_COMMAND("help"))

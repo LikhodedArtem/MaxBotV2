@@ -35,16 +35,24 @@ async def add_status_query(queries: list[Query]) -> list[Query]:
             recipient_id = query.message.recipient.user_id
 
             status = await get_status(sender_id if sender_id != bot_info.my_id else recipient_id)
+            print("===add_status_query", status)
+
             if status is None:
                 continue
 
-            status_query = deepcopy(query)
-            if status.is_str:
-                status_query.event=Event.STATUS_CALLBACK(name=status.value)
-            else:
-                status_query.event=Event.STATUS_CALLBACK(payload=status.value)
+            if not status.is_background:
+                queries = []
 
-            queries.append(status_query)
+            if status.send_callback:
+                status_query = deepcopy(query)
+                if status.is_str:
+                    status_query.event=Event.STATUS_CALLBACK(name=status.value)
+                else:
+                    status_query.event=Event.STATUS_CALLBACK(payload=status.value)
+
+                queries.append(status_query)
+
+            break
 
     return queries
 

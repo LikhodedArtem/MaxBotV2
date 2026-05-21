@@ -12,7 +12,7 @@ from messages.message_schemes import Message, ContactMessage, Callback
 
 class Query(BaseModel):
     event: Optional[AllEvents] = None
-    message: Optional[Message] = None
+    message: Optional[Message | ContactMessage] = None
     contact_message: Optional[ContactMessage] = None
     callback: Optional[Callback] = None
 

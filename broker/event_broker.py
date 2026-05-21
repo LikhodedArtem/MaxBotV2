@@ -83,32 +83,35 @@ class EventBroker:
         self,
         on_events: Optional[AllEvents | list[AllEvents]] = None,
         func: Optional[list[Predicate] | Predicate] = None,
-        args: Optional[list[tuple[Any, ...] | tuple[Any, ...]]] = None,
     ) -> Callable[[Handler], Handler]:
         def decorator(handler: Handler) -> Handler:
+            if func is None:
+                function_list = []
+            elif not isinstance(func, list):
+                function_list = [func]
+            else:
+                function_list = func
+
             @wraps(handler)
-            async def wrapper(query: Query) -> None:
+            async def wrapper(query: Optional[Query] = None, **kwargs) -> None:
                 try:
-                    if func is not None:
-                        if not isinstance(func, list):
-                            function_list = [func]
-                        else:
-                            function_list = func
+                    if query is not None:
+                        if func is not None:
+                            for function in function_list:
+                                predicate_kwargs = self._build_handler_kwargs(function, query)
+                                allowed = await function(**predicate_kwargs)
+                                if not allowed:
+                                    return
 
-                        if not isinstance(args, list):
-                            args_list = [args]
-                        else:
-                            args_list = args
+                        handler_kwargs = self._build_handler_kwargs(handler, query)
+                        await handler(**handler_kwargs)
 
-                        for i, function in enumerate(function_list):
-                            predicate_kwargs = self._build_handler_kwargs(function, query)
-                            allowed = await function(*(args_list[i] or ()), **predicate_kwargs)
-                            if not allowed:
-                                return
-
-
-                    handler_kwargs = self._build_handler_kwargs(handler, query)
-                    await handler(**handler_kwargs)
+                    else:
+                        if func is not None:
+                            for function in function_list:
+                                if not await function(**kwargs):
+                                    return
+                        await handler(**kwargs)
 
                 except Exception:
                     logging.exception(

@@ -49,16 +49,6 @@ class Payload(PayloadMixin):
     type: str
     action: str
 
-    def __eq__(self, other: Payload) -> bool:
-        if isinstance(other, Payload):
-            return (
-                self.type == other.type
-                and self.action == other.action
-                and self.uuid == other.uuid
-                and self.inner == other.inner
-            )
-        raise NotImplemented
-
 
 class PayloadStart(PayloadMixin):
     """Позволяет изначально формировать лишь часть информации Payload перед полным завершением через add
