@@ -1,62 +1,22 @@
 import asyncio
 import inspect
 import logging
-from collections import defaultdict
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional
-from uuid import UUID
-
-from pydantic import BaseModel
 
 from broker.event import *
-from messages.message_schemes import Message, ContactMessage, Callback
-from callback.payload_schemes import Payload
-
-
-class Query(BaseModel):
-    event: Optional[AllEvents] = None
-    message: Optional[Message] = None
-    contact_message: Optional[ContactMessage] = None
-    callback: Optional[Callback] = None
-
-    @property
-    def payload(self) -> Payload | None:
-        if self.callback is not None:
-            return self.callback.payload
-        return None
-
-    @property
-    def payload_type(self) -> str | None:
-        if self.payload is not None:
-            return self.payload.type
-        return None
-
-    @property
-    def payload_uuid(self) -> UUID | None:
-        if self.payload is not None:
-            return self.payload.uuid
-        return None
-
-    @property
-    def payload_action(self) -> str | None:
-        if self.payload is not None:
-            return self.payload.action
-        return None
-
-    @property
-    def payload_inner(self) -> list[str] | None:
-        if self.payload is not None:
-            return self.payload.inner.value
-        return None
+from broker.query import Query
 
 
 Handler = Callable[..., Awaitable[None]]
 Predicate = Callable[..., Awaitable[bool]]
+Checker = Callable[[list[Query]], Awaitable[bool]]
 
 
 class EventBroker:
-    def __init__(self):
+    def __init__(self, checkers: Optional[Predicate | list[Predicate]] = None) -> None:
         self.subscribers: dict[AllEvents, dict[str, set | dict] | set[Handler]] = {}
+        self.checkers = checkers if isinstance(checkers, list) else [checkers]
 
     def subscribe_on_event(self, event: AllEvents, handler: Handler) -> None:
         if not isinstance(event, PayloadEvent):
@@ -216,7 +176,7 @@ class EventBroker:
 
 
     @staticmethod
-    def _build_handler_kwargs(func: Callable[..., Any], query: Query) -> dict[str, Any]:
+    def _build_handler_kwargs(func: Callable[..., Any], query: Query, can_be_none: bool = False) -> dict[str, Any]:
         sig = inspect.signature(func)
 
         available = {
@@ -238,15 +198,23 @@ class EventBroker:
             if name in available:
                 value = available[name]
 
-                if value is None and name != "status" and param.default is inspect.Parameter.empty:
-                    raise ValueError(
-                        f"Handler '{func.__name__}' ожидает '{name}', "
-                        f"но в query это поле равно None"
-                    )
+                if not can_be_none:
+                    if value is None and name != "status" and param.default is inspect.Parameter.empty:
+                        raise ValueError(
+                            f"Handler '{func.__name__}' ожидает '{name}', "
+                            f"но в query это поле равно None"
+                        )
 
                 kwargs[name] = value
 
         return kwargs
+
+
+    async def publish_queries(self, queries: list[Query]):
+        for checker in self.checkers:
+            if not await checker(queries): return
+
+        await asyncio.gather(*(broker.publish(query) for query in queries))
 
     async def publish(self, query: Query) -> None:
         event = query.event
@@ -259,4 +227,6 @@ class EventBroker:
         await asyncio.gather(*(handler(query) for handler in all_handlers))
 
 
-broker = EventBroker()
+from .broker_checkers import reg_checker
+
+broker = EventBroker(checkers=reg_checker)

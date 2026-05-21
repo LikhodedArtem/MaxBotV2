@@ -34,7 +34,7 @@ async def webhook(request: Request):
     for query in queries:
         print("===webhook", query)
 
-    await asyncio.gather(*(broker.publish(query) for query in queries))
+    await broker.publish_queries(queries)
 
     return JSONResponse(status_code=200, content={"status": "ok"})
 

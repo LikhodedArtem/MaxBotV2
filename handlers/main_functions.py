@@ -72,17 +72,3 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
         await message.edit(
             text, "inline_keyboard", payload=await Keyboards.change_list(mylist.uuid)
         )
-
-
-@broker.check(Event.MESSAGE_COMMAND("yyy"))
-async def create(message: Message) -> None:
-    await message.answer("command yyy")
-
-
-@broker.check(Event.MESSAGE_COMMAND)
-async def create(message: Message) -> None:
-    await message.answer("command")
-
-@broker.check(Event.MESSAGE_COMMAND("zzz"))
-async def create(message: Message) -> None:
-    await message.answer("command zzz")
