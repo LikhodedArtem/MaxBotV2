@@ -1,4 +1,4 @@
-__all__ = ["add_status_query", "create_payload_status"]
+__all__ = ["add_status_query", "create_status"]
 
 from copy import deepcopy
 from datetime import datetime
@@ -11,19 +11,34 @@ from callback.payload_schemes import Payload, PayloadCheck, Inner
 from core.config import bot_info
 from status.status_shemes import *
 from status.status_crud import get_status
-from messages.message_schemes import Callback
 
 
-def create_payload_status(
+def create_status(
     type: str,
     action: str,
     uuid: Optional[UUID] = None,
     inner: Optional[str | list[str]] = None,
+    name: Optional[str] = None,
+    is_background: Optional[bool] = None,
+    send_callback: Optional[bool] = None,
 ) -> Status:
-    """Функция для быстрого создания Payload статуса"""
+    """Функция для удобного создания Payload статуса"""
 
     payload = Payload(type=type, uuid=uuid, action=action, inner=Inner(value=inner))
-    status = Status(value=payload)
+
+    status_kwargs = {
+        "name": name,
+        "payload": payload,
+        "is_background": is_background,
+        "send_callback": send_callback,
+    }
+
+    if is_background is None:
+        status_kwargs.pop("is_background")
+    if send_callback is None:
+        status_kwargs.pop("send_callback")
+
+    status = Status(**status_kwargs)
 
     return status
 
@@ -34,8 +49,9 @@ async def add_status_query(queries: list[Query]) -> list[Query]:
             sender_id = query.message.sender.user_id
             recipient_id = query.message.recipient.user_id
 
-            status = await get_status(sender_id if sender_id != bot_info.my_id else recipient_id)
-            print("===add_status_query", status)
+            status = get_status(
+                sender_id if sender_id != bot_info.my_id else recipient_id
+            )
 
             if status is None:
                 continue
@@ -48,36 +64,11 @@ async def add_status_query(queries: list[Query]) -> list[Query]:
 
                 if status.send_callback:
                     status_query = deepcopy(query)
-                    if status.is_str:
-                        status_query.event=Event.STATUS_CALLBACK(name=status.value)
-                    else:
-                        status_query.event=Event.STATUS_CALLBACK(payload=status.value)
-
+                    status_query.event = Event.STATUS_CALLBACK(
+                        name=status.name, payload=status.payload
+                    )
                     queries.append(status_query)
 
                 break
 
     return queries
-
-
-# def get_query_from_status(query: Query) -> Query | None:
-#     if (query.message is not None
-#         and query.callback is None
-#         and isinstance(query.status, Status)
-#         and query.status.is_payload
-#         and query.status.send_callback):
-#
-#         timestamp = int(datetime.now().timestamp() * 1000)
-#
-#         new_callback = Callback(
-#             timestamp=timestamp,
-#             callback_id="status_callback",
-#             payload=query.status.value,
-#             user=query.message.sender,
-#             type="status",
-#         )
-#
-#         new_query = Query(event=Event.STATUS_CALLBACK, callback=new_callback, message=query.message)
-#
-#         return new_query
-#     return None

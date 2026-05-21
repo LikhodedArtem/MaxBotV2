@@ -15,6 +15,7 @@ app = FastAPI()
 
 print(broker.subscribers)
 
+
 @app.get("/ping")
 async def ping_pong():
     return "pong"

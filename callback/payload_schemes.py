@@ -79,7 +79,7 @@ class PayloadStart(PayloadMixin):
             action: действие над объектом
             uuid: uuid обрабатываемого объекта
             inner: дополнительная информация о совершаемом действии
-            cancel_inner: Убрать из учёта inner, указанный при старте
+            cancel_inner: Убрать из учёта inner, переданный при старте
 
         """
 

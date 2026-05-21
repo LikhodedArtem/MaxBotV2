@@ -125,7 +125,7 @@ class Attachments(BaseModel):
             return None
 
         if data is None:
-            raise ValueError(f"Для типа Attachments: {type} не был указан payload")
+            raise ValueError(f"Для типа Attachments: {type} не был передан payload")
 
         payloads = {
             "file": FilePayload,

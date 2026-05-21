@@ -19,24 +19,18 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
                     message = Message(**data["message"])
 
                     if list(text)[0] == "/" and len(text) > 1:
-                        q1 = Query(event=Event.MESSAGE_COMMAND,
-                                   message=message
-                                   )
-                        q2 = Query(event=Event.MESSAGE_COMMAND("".join(list(text)[1:])),
-                                   message=message
-                                   )
+                        q1 = Query(event=Event.MESSAGE_COMMAND, message=message)
+                        q2 = Query(
+                            event=Event.MESSAGE_COMMAND("".join(list(text)[1:])),
+                            message=message,
+                        )
                         return [q1, q2]
 
                 except Exception:
                     message = ContactMessage(**data["message"])
 
-
-                q1 =  Query(event=Event.MESSAGE_CREATED,
-                            message=message
-                            )
-                q2 = Query(event=Event.MESSAGE_CREATED(text=text),
-                           message=message
-                           )
+                q1 = Query(event=Event.MESSAGE_CREATED, message=message)
+                q2 = Query(event=Event.MESSAGE_CREATED(text=text), message=message)
 
                 return [q1, q2]
 
@@ -45,21 +39,18 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
                 message = Message(**data["message"])
                 callback = Callback(**data["callback"])
 
-                q1 = Query(event=Event.MESSAGE_CALLBACK,
-                           message=message,
-                           callback=callback
-                           )
-                q2 = Query(event=Event.MESSAGE_CALLBACK(payload=payload),
-                           message=message,
-                           callback=callback
-                           )
+                q1 = Query(
+                    event=Event.MESSAGE_CALLBACK, message=message, callback=callback
+                )
+                q2 = Query(
+                    event=Event.MESSAGE_CALLBACK(payload=payload),
+                    message=message,
+                    callback=callback,
+                )
 
                 return [q1, q2]
 
         return []
 
     except Exception:
-        logging.exception(
-            "Не получилось отсортировать данные из webhook: '%s'",
-            data
-        )
+        logging.exception("Не получилось отсортировать данные из webhook: '%s'", data)

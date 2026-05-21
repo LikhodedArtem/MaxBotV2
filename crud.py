@@ -137,7 +137,9 @@ async def get_users_with_mylists_with_values(session: AsyncSession):
                 print("\t*", value)
 
 
-async def get_mylist_value_by_id(session: AsyncSession, mylist_value_id: int) -> None | MyListValue:
+async def get_mylist_value_by_id(
+    session: AsyncSession, mylist_value_id: int
+) -> None | MyListValue:
     stmt = select(MyListValue).where(MyListValue.id == mylist_value_id)
 
     result = await session.execute(stmt)
@@ -147,15 +149,23 @@ async def get_mylist_value_by_id(session: AsyncSession, mylist_value_id: int) ->
     return mylist_value
 
 
-async def update_mylist_value_value_by_id(session: AsyncSession, mylist_value_id: int, value: str) -> None:
-    stmt = update(MyListValue).where(MyListValue.id == mylist_value_id).values({MyListValue.value: value})
+async def update_mylist_value_value_by_id(
+    session: AsyncSession, mylist_value_id: int, value: str
+) -> None:
+    stmt = (
+        update(MyListValue)
+        .where(MyListValue.id == mylist_value_id)
+        .values({MyListValue.value: value})
+    )
 
     await session.execute(stmt)
 
     await session.commit()
 
 
-async def delete_mylist_value_by_id(session: AsyncSession, mylist_value_id: int) -> None:
+async def delete_mylist_value_by_id(
+    session: AsyncSession, mylist_value_id: int
+) -> None:
     stmt = delete(MyListValue).where(MyListValue.id == mylist_value_id)
 
     await session.execute(stmt)

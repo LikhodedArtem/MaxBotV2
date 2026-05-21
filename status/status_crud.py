@@ -10,7 +10,7 @@ from core.config import bot_info
 from .status_shemes import Statuses, Status
 
 
-async def get_status(user_id: int) -> Status | None:
+def get_status(user_id: int) -> Status | None:
     """Получить статус пользователя по id
 
     Args:
@@ -23,7 +23,7 @@ async def get_status(user_id: int) -> Status | None:
     return None
 
 
-async def set_status(user_id: int, status: Status) -> None:
+def set_status(user_id: int, status: Status) -> None:
     """Установить статус пользователя по id
 
     Args:
@@ -37,7 +37,7 @@ async def set_status(user_id: int, status: Status) -> None:
         Statuses.statuses[user_id] = status
 
 
-async def clear_status(user_id: int) -> None:
+def clear_status(user_id: int) -> None:
     """Очистить статус пользователя по id
 
     Args:
@@ -50,7 +50,7 @@ async def clear_status(user_id: int) -> None:
         Statuses.statuses.pop(user_id)
 
 
-async def has_status(user_id: int) -> bool:
+def has_status(user_id: int) -> bool:
     """Есть ли у пользователя по id статус
 
     Args:

@@ -10,8 +10,6 @@ async def list_checker(message: Message, payload_uuid: UUID) -> bool:
         mylist = await get_mylist_by_uuid(session, payload_uuid)
 
     if mylist is None:
-        await message.answer(
-            "❌Работа с этим списком прекращена"
-        )
+        await message.answer("❌Работа с этим списком прекращена")
         return False
     return True

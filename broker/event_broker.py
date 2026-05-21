@@ -7,7 +7,6 @@ from typing import Any, Awaitable, Callable, Optional
 from broker.event import *
 from broker.query import Query
 
-
 Handler = Callable[..., Awaitable[None]]
 Predicate = Callable[..., Awaitable[bool]]
 Checker = Callable[[list[Query]], Awaitable[bool]]
@@ -34,11 +33,11 @@ class EventBroker:
         current_node = self.subscribers[event.sub_event]
 
         if hasattr(event, "name") and event.name is not None:
-           if event.name not in current_node:
-               if "__names__" not in current_node:
-                   current_node["__names__"] = {}
-               current_node["__names__"][event.name] = {"__handlers__": set()}
-           current_node = current_node["__names__"][event.name]
+            if event.name not in current_node:
+                if "__names__" not in current_node:
+                    current_node["__names__"] = {"__handlers__": set()}
+                current_node["__names__"][event.name] = {"__handlers__": set()}
+            current_node = current_node["__names__"][event.name]
 
         if event.payload is None:
             pass
@@ -59,7 +58,9 @@ class EventBroker:
         else:
             self.unsubscribe_from_payload_event(event, handler)
 
-    def unsubscribe_from_payload_event(self, event: PayloadEvent, handler: Handler) -> None:
+    def unsubscribe_from_payload_event(
+        self, event: PayloadEvent, handler: Handler
+    ) -> None:
         if event.sub_event not in self.subscribers:
             return
 
@@ -100,7 +101,9 @@ class EventBroker:
                     if query is not None:
                         if func is not None:
                             for function in function_list:
-                                predicate_kwargs = self._build_handler_kwargs(function, query)
+                                predicate_kwargs = self._build_handler_kwargs(
+                                    function, query
+                                )
                                 allowed = await function(**predicate_kwargs)
                                 if not allowed:
                                     return
@@ -179,7 +182,6 @@ class EventBroker:
 
         return handlers
 
-
     def get_remain_handlers(self, subscribers: dict):
         handlers = set()
         for key in subscribers:
@@ -189,9 +191,10 @@ class EventBroker:
                 handlers |= self.get_remain_handlers(subscribers[key])
         return handlers
 
-
     @staticmethod
-    def _build_handler_kwargs(func: Callable[..., Any], query: Query, can_be_none: bool = False) -> dict[str, Any]:
+    def _build_handler_kwargs(
+        func: Callable[..., Any], query: Query, can_be_none: bool = False
+    ) -> dict[str, Any]:
         sig = inspect.signature(func)
 
         available = {
@@ -215,7 +218,11 @@ class EventBroker:
                 value = available[name]
 
                 if not can_be_none:
-                    if value is None and name != "status" and param.default is inspect.Parameter.empty:
+                    if (
+                        value is None
+                        and name != "status"
+                        and param.default is inspect.Parameter.empty
+                    ):
                         raise ValueError(
                             f"Handler '{func.__name__}' ожидает '{name}', "
                             f"но в query это поле равно None"
@@ -225,10 +232,10 @@ class EventBroker:
 
         return kwargs
 
-
     async def publish_queries(self, queries: list[Query]):
         for checker in self.checkers:
-            if not await checker(queries): return
+            if not await checker(queries):
+                return
 
         await asyncio.gather(*(broker.publish(query) for query in queries))
 

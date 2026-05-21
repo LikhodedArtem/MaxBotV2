@@ -16,23 +16,23 @@ from status.status_crud import *
 
 
 def create_message(
-        text: str,
-        type: Literal[
-            "base_text",
-            "video",
-            "audio",
-            "file",
-            "sticker",
-            "contact",
-            "inline_keyboard",
-            "location",
-        ] = "base_text",
-        link: Optional[str] = None,
-        payload: Optional[dict[str, Any]] = None,
-        notify: Optional[bool] = True,
-        format: Literal["html", "markdown"] = "html",
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+    text: str,
+    type: Literal[
+        "base_text",
+        "video",
+        "audio",
+        "file",
+        "sticker",
+        "contact",
+        "inline_keyboard",
+        "location",
+    ] = "base_text",
+    link: Optional[str] = None,
+    payload: Optional[dict[str, Any]] = None,
+    notify: Optional[bool] = True,
+    format: Literal["html", "markdown"] = "html",
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
 ) -> NewMessageData:
     # cords = (latitude, longitude)
     # attachments_data = {"type": type, "payload": payload} if await is_use_first(payload, cords) \
@@ -115,22 +115,41 @@ class MessageMixin(BaseModel):
         await delete_message(self.body.mid)
 
     async def status(
-            self, status: Status | str, is_background: bool = False, send_callback: bool = True
+        self,
+        status: Optional[Status] = None,
+        name: Optional[str] = None,
+        payload: Optional[Payload] = None,
+        is_background: Optional[bool] = None,
+        send_callback: Optional[bool] = None,
     ) -> None:
+        if status is None and name is None and payload is None:
+            ValueError("Должно быть передано что-либо из: status, name, payload")
+
+        if status is not None and (
+            name is not None
+            or payload is not None
+            or is_background is not None
+            or send_callback is not None
+        ):
+            ValueError("Должно быть передано или status, или иные атрибуты")
+
         user_id = (
             self.sender.user_id
             if self.sender.user_id != bot_info.my_id
             else self.recipient.user_id
         )
 
-        if isinstance(status, str):
-            status = Status(value=status, is_background=is_background, send_callback=send_callback)
-        else:
-            status = Status(value=status.value, is_background=is_background, send_callback=send_callback)
+        if status is None:
+            from status.status_functions import create_status
 
-        from status.status_crud import set_status
+            status = create_status(
+                name=name,
+                **payload.model_dump(),
+                is_background=is_background,
+                send_callback=send_callback,
+            )
 
-        await set_status(user_id, status)
+        set_status(user_id, status)
 
     async def clear_status(self):
         user_id = (
@@ -141,7 +160,7 @@ class MessageMixin(BaseModel):
 
         from status.status_crud import clear_status
 
-        await clear_status(user_id)
+        clear_status(user_id)
 
 
 class Message(MessageMixin):
@@ -150,7 +169,6 @@ class Message(MessageMixin):
 
 class ContactMessage(MessageMixin):
     body: ContactBody
-
 
 
 class Callback(BaseModel):

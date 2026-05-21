@@ -1,6 +1,7 @@
 from core.models.mylist_value import MyListValue
 from sqlalchemy.orm import Mapped
 
+
 def mylist_values_to_form(
     mylist_values: list[MyListValue] | Mapped[list[MyListValue]],
 ):
