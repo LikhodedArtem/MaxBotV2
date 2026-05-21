@@ -28,24 +28,25 @@ def create_payload_status(
     return status
 
 
-async def add_status_query(query: Query) -> tuple[Query, ...]:
-    if query.message is not None:
-        sender_id = query.message.sender.user_id
-        recipient_id = query.message.recipient.user_id
+async def add_status_query(queries: list[Query]) -> list[Query]:
+    for query in queries:
+        if query.message is not None:
+            sender_id = query.message.sender.user_id
+            recipient_id = query.message.recipient.user_id
 
-        status = await get_status(sender_id if sender_id != bot_info.my_id else recipient_id)
-        if status is None:
-            return (query,)
+            status = await get_status(sender_id if sender_id != bot_info.my_id else recipient_id)
+            if status is None:
+                continue
 
-        status_query = deepcopy(query)
-        if status.is_str:
-            status_query.event=Event.STATUS_CALLBACK(name=status.value)
-        else:
-            status_query.event=Event.STATUS_CALLBACK(payload=status.value)
+            status_query = deepcopy(query)
+            if status.is_str:
+                status_query.event=Event.STATUS_CALLBACK(name=status.value)
+            else:
+                status_query.event=Event.STATUS_CALLBACK(payload=status.value)
 
-        return query, status_query
+            queries.append(status_query)
 
-    return (query,)
+    return queries
 
 
 # def get_query_from_status(query: Query) -> Query | None:

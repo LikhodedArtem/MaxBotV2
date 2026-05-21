@@ -13,7 +13,7 @@ from status.status_functions import create_payload_status
 from handlers.help_functions import mylist_values_to_form
 
 
-@broker.check(on_event=Event.MESSAGE_COMMAND("help"))
+@broker.check(Event.MESSAGE_COMMAND("help"))
 async def help(message: Message) -> None:
     text = (
         f"❓Что умеет данный бот:\n\n"
@@ -30,7 +30,7 @@ async def help(message: Message) -> None:
     await message.answer(text)
 
 
-@broker.check(on_event=Event.MESSAGE_COMMAND("new_list"))
+@broker.check(Event.MESSAGE_COMMAND("new_list"))
 async def new_list(message: Message) -> None:
     user_id = message.sender.user_id
 
@@ -74,6 +74,15 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
         )
 
 
-@broker.check(on_event=Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change"}))
-async def get_list_field(message: Message, payload_uuid: UUID, payload_inner: list[str]) -> None:
-    await message.answer("change")
+@broker.check(Event.MESSAGE_COMMAND("yyy"))
+async def create(message: Message) -> None:
+    await message.answer("command yyy")
+
+
+@broker.check(Event.MESSAGE_COMMAND)
+async def create(message: Message) -> None:
+    await message.answer("command")
+
+@broker.check(Event.MESSAGE_COMMAND("zzz"))
+async def create(message: Message) -> None:
+    await message.answer("command zzz")

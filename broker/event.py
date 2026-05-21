@@ -17,9 +17,19 @@ class Event(Enum):
     STATUS_CALLBACK = auto()
 
     def __call__(self, *args, **kwargs) -> AllEvents:
+        if self == Event.MESSAGE_CREATED:
+            if len(args) > 0 and isinstance(args[0], str):
+                return MessageEvent(args[0])
+            if "text" in kwargs and isinstance(kwargs["text"], str):
+                return MessageEvent(kwargs["text"])
+
+            raise ValueError("Не правильный формат данных для MESSAGE_CREATED")
+
         if self == Event.MESSAGE_COMMAND:
-            if isinstance(args[0], str):
+            if len(args) > 0 and isinstance(args[0], str):
                 return CommandEvent(args[0])
+            if "command" in kwargs and isinstance(kwargs["command"], str):
+                return CommandEvent(kwargs["command"])
 
             raise ValueError("Не правильный формат данных для MESSAGE_COMMAND")
 
@@ -31,6 +41,7 @@ class Event(Enum):
             if isinstance(payload, Payload):
                 return MessageCallback(payload=payload)
             if isinstance(kwargs["payload"], dict):
+                payload: dict
                 return MessageCallback(payload=Payload(**payload))
 
             raise ValueError("Не правильный формат данных для MESSAGE_CALLBACK")
@@ -44,11 +55,17 @@ class Event(Enum):
             if isinstance(payload, Payload):
                 return StatusCallback(name=name, payload=payload)
             if isinstance(kwargs["payload"], dict):
+                payload: dict
                 return StatusCallback(name=name, payload=Payload(**payload))
 
             raise ValueError("Не правильный формат данных для STATUS_CALLBACK")
 
         raise TypeError(f"Событие {self.name} нельзя вызвать с аргументом")
+
+
+@dataclass(frozen=True)
+class MessageEvent:
+    text: str
 
 
 @dataclass(frozen=True)
@@ -73,4 +90,4 @@ class MessageCallback(PayloadEvent):
     my_event: Event = Event.MESSAGE_CALLBACK
 
 
-AllEvents = CommandEvent | StatusCallback | MessageCallback | Event
+AllEvents = MessageEvent | CommandEvent | StatusCallback | MessageCallback | Event

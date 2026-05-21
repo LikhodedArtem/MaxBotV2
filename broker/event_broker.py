@@ -121,7 +121,7 @@ class EventBroker:
 
     def check(
         self,
-        on_event: Optional[AllEvents | list[AllEvents]] = None,
+        on_events: Optional[AllEvents | list[AllEvents]] = None,
         func: Optional[list[Predicate] | Predicate] = None,
         args: Optional[list[tuple[Any, ...] | tuple[Any, ...]]] = None,
     ) -> Callable[[Handler], Handler]:
@@ -156,11 +156,11 @@ class EventBroker:
                         handler.__name__,
                     )
 
-            if on_event is not None:
-                if isinstance(on_event, list):
-                    events = on_event
+            if on_events is not None:
+                if isinstance(on_events, list):
+                    events = on_events
                 else:
-                    events = [on_event]
+                    events = [on_events]
 
                 for event in events:
                     self.subscribe_on_event(event, wrapper)
