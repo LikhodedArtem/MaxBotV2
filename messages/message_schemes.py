@@ -227,7 +227,36 @@ class Sender(BaseModel):
     username: Optional[str] = None
     name: Optional[str] = None
 
-    # status: Optional[Status] = None
+    async def answer(
+        self,
+        text: Optional[str] = None,
+        type: Literal[
+            "base_text",
+            "video",
+            "audio",
+            "file",
+            "sticker",
+            "contact",
+            "inline_keyboard",
+            "location",
+        ] = "base_text",
+        link: Optional[str] = None,
+        payload: Optional[dict[str, Any]] = None,
+        notify: Optional[bool] = True,
+        format: Literal["html", "markdown"] = "html",
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+    ) -> None:
+        message_data = create_message(
+            text, type, link, payload, notify, format, latitude, longitude
+        )
+
+        print(message_data)
+
+        response = await send_message(message_data, user_id=self.user_id)
+        message = response.json()["message"]
+        message = Message(**message)
+        return message
 
 
 class Recipient(BaseModel):

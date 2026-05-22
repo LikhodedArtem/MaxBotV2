@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from status.status_shemes import Status
 from .event import AllEvents
 from callback.payload_schemes import Payload
-from messages.message_schemes import Message, ContactMessage, Callback
+from messages.message_schemes import Message, ContactMessage, Callback, Sender
 
 
 class Query(BaseModel):
@@ -17,6 +17,7 @@ class Query(BaseModel):
     contact_message: Optional[ContactMessage] = None
     callback: Optional[Callback] = None
     real_payload: Optional[Payload] = None
+    user: Optional[Sender] = None
     status: Optional[Status] = None
 
     @property
@@ -51,4 +52,12 @@ class Query(BaseModel):
     def payload_inner(self) -> tuple[str, ...] | None:
         if self.payload is not None:
             return self.payload.inner.value
+        return None
+
+    @property
+    def sender(self) -> Sender | None:
+        if self.user is not None:
+            return self.user
+        if self.message is not None:
+            return self.message.sender
         return None

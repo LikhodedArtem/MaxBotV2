@@ -386,6 +386,7 @@ class EventBroker:
             "payload_action": query.payload_action,
             "payload_inner": query.payload_inner,
             "status": query.status,
+            "sender": query.sender,
         }
 
         kwargs = {}

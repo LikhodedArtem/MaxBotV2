@@ -22,9 +22,14 @@ from crud import (
     update_mylist_value_value_by_id,
 )
 
-from messages.message_schemes import Message, ContactMessage
+from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
 from handlers.help_functions import *
+
+
+@broker.check(Event.BOT_STARTED)
+async def bot_started(sender: Sender):
+    await sender.answer(GN.help_text)
 
 
 @broker.check(Event.MESSAGE_COMMAND("reg"))
@@ -75,19 +80,7 @@ async def reg_set(message: ContactMessage):
 
 @broker.check(Event.MESSAGE_COMMAND("help"))
 async def help(message: Message) -> None:
-    text = (
-        f"❓Что умеет данный бот:\n\n"
-        f"/help - Вызвать данное меню-помощник\n"
-        f"/reg - Регистрация в боте\n"
-        f"/bin - Показать все удалённые элементы\n"
-        f"• Списки\n"
-        f"/new_list - Создать новый список\n"
-    )  # f'/lists_view - Показать все списки\n'\
-    # f'• Напоминания\n'\
-    # f'/new_remind - Создать новое напоминание\n'\
-    # f'/reminds_view - Просмотреть все напоминания'\
-
-    await message.answer(text)
+    await message.answer(GN.help_text)
 
 
 @broker.check(Event.MESSAGE_COMMAND("new_list"))

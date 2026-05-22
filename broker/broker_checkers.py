@@ -9,16 +9,17 @@ from broker.event import Event
 async def reg_checker(queries: list[Query]) -> bool:
     print()
     for query in queries:
-        if query.event == Event.MESSAGE_COMMAND(
-            "reg"
-        ) or query.event == Event.STATUS_CALLBACK(
-            payload={"type": "bot", "action": "reg"}
+        if (
+            query.event == Event.MESSAGE_COMMAND("reg")
+            or query.event
+            == Event.STATUS_CALLBACK(payload={"type": "bot", "action": "reg"})
+            or query.event == Event.BOT_STARTED
         ):
 
             return True
 
     for query in queries:
-        if hasattr(query, "message"):
+        if query.message is not None:
             message = query.message
 
             sender_id = message.sender.user_id

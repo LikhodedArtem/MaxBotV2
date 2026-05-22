@@ -2,7 +2,7 @@ import logging
 
 from broker.event import Event
 from broker.event_broker import Query
-from messages.message_schemes import Message, Callback, ContactMessage
+from messages.message_schemes import Message, Callback, ContactMessage, Sender
 from callback.payload_functions import restore_payload
 
 
@@ -49,6 +49,14 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
                 )
 
                 return [q1, q2]
+
+            case "bot_started":
+                q1 = Query(
+                    event=Event.BOT_STARTED,
+                    user=Sender(**data["user"]),
+                )
+
+                return [q1]
 
         return []
 
