@@ -16,12 +16,17 @@ class Query(BaseModel):
     message: Optional[Message | ContactMessage] = None
     contact_message: Optional[ContactMessage] = None
     callback: Optional[Callback] = None
+    real_payload: Optional[Payload] = None
     status: Optional[Status] = None
 
     @property
     def payload(self) -> Payload | None:
+        if self.real_payload is not None:
+            return self.real_payload
         if self.callback is not None:
             return self.callback.payload
+        if self.status is not None:
+            return self.status.payload
         return None
 
     @property

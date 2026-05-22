@@ -142,9 +142,11 @@ class MessageMixin(BaseModel):
         if status is None:
             from status.status_functions import create_status
 
+            payload = payload.model_dump() if payload is not None else {}
+
             status = create_status(
                 name=name,
-                **payload.model_dump(),
+                **payload,
                 is_background=is_background,
                 send_callback=send_callback,
             )

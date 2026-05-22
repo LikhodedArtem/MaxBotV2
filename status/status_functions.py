@@ -14,8 +14,8 @@ from status.status_crud import get_status
 
 
 def create_status(
-    type: str,
-    action: str,
+    type: Optional[str] = None,
+    action: Optional[str] = None,
     uuid: Optional[UUID] = None,
     inner: Optional[str | list[str]] = None,
     name: Optional[str] = None,
@@ -24,7 +24,15 @@ def create_status(
 ) -> Status:
     """Функция для удобного создания Payload статуса"""
 
-    payload = Payload(type=type, uuid=uuid, action=action, inner=Inner(value=inner))
+    if (type is None or action is None) and not (
+            type is None and action is None or type is not None and action is not None):
+        raise ValueError("Неправильные аргументы для создания статуса: type и action должны либо оба отсутствовать либо оба быть переданными")
+
+    if type is not None and action is not None:
+        payload = Payload(type=type, uuid=uuid, action=action, inner=Inner(value=inner))
+    else:
+        payload = None
+
 
     status_kwargs = {
         "name": name,
@@ -44,31 +52,33 @@ def create_status(
 
 
 async def add_status_query(queries: list[Query]) -> list[Query]:
+    status = None
+    status_query = None
+
     for query in queries:
         if query.message is not None:
             sender_id = query.message.sender.user_id
             recipient_id = query.message.recipient.user_id
 
-            status = get_status(
-                sender_id if sender_id != bot_info.my_id else recipient_id
-            )
+            user_id = sender_id if sender_id != bot_info.my_id else recipient_id
 
-            if status is None:
-                continue
+            status = get_status(user_id)
 
+            if sender_id != bot_info.my_id:
+                if status is not None and status.send_callback:
+                        status_query = deepcopy(query)
+                        status_query.event = Event.STATUS_CALLBACK(
+                            name=status.name, payload=status.payload
+                            )
+                        status_query.real_payload = status.payload
+
+            break
+
+    if status is not None and not status.is_background:
+        for query in queries:
             query.status = status
 
-            if not status.is_background or status.send_callback:
-                if not status.is_background:
-                    queries = []
-
-                if status.send_callback:
-                    status_query = deepcopy(query)
-                    status_query.event = Event.STATUS_CALLBACK(
-                        name=status.name, payload=status.payload
-                    )
-                    queries.append(status_query)
-
-                break
+    if status_query is not None:
+        queries.append(status_query)
 
     return queries

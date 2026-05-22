@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["Event", "AllEvents", "PayloadEvent"]
+__all__ = ["Event", "AllEvents", "PayloadEvent", "SubPayloadEvent"]
 
 from enum import Enum, auto
 from dataclasses import dataclass

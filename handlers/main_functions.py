@@ -109,6 +109,10 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
     async with db_helper.session_factory() as session:
         mylist = await get_mylist_with_values_by_uuid(session, payload_uuid)
 
+    if mylist is None:
+        await message.answer("❌Невозможно отобразить список! Он был безвозвратно удалён.")
+        return
+
     mylist_type = "Не указан" if mylist.type is None else mylist.type
     mylist_title = "Отсутствует" if mylist.title is None else mylist.title
     mylist_description = (
@@ -148,7 +152,7 @@ async def list_field_get(
 
     text = f"✏️Напишите нов{"ый" if field == "type" else "ое"} <b>{GN.get(field).capitalize()}</b>\n"
 
-    status = create_status(type="list", uuid=payload_uuid, action="set", inner=[])
+    status = create_status(type="list", uuid=payload_uuid, action="set", inner=["field", field])
     print("===request_list_field", message)
 
     await message.status(status)
@@ -157,7 +161,7 @@ async def list_field_get(
 
 
 @broker.check(
-    Event.STATUS_CALLBACK(payload={"type": "list", "action": "change", "inner": "list"})
+    Event.STATUS_CALLBACK(payload={"type": "list", "action": "set", "inner": "field"})
 )
 async def list_field_set(
     message: Message, payload_uuid: UUID, payload_inner: list[str]
@@ -198,7 +202,7 @@ async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.status(name="List-Delete")
 
 
-@broker.check(Event.STATUS_CALLBACK(name="List-Delete"))
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": "first"}), allowed="List-Delete")
 async def second_delete(message: Message, payload_uuid: UUID) -> None:
     await message.edit(
         "Вы <b>точно</b> уверены, что хотите <b>удалить</b> список?",
@@ -209,7 +213,7 @@ async def second_delete(message: Message, payload_uuid: UUID) -> None:
     )
 
 
-@broker.check(Event.STATUS_CALLBACK(name="List-Delete"))
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": "second"}), allowed="List-Delete")
 async def final_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
 
