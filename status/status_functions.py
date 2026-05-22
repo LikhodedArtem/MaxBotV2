@@ -17,7 +17,7 @@ def create_status(
     type: Optional[str] = None,
     action: Optional[str] = None,
     uuid: Optional[UUID] = None,
-    inner: Optional[str | list[str]] = None,
+    inner: Optional[str | tuple[str, ...]] = None,
     name: Optional[str] = None,
     is_background: Optional[bool] = None,
     send_callback: Optional[bool] = None,

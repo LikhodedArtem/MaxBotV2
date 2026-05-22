@@ -21,10 +21,10 @@ class Keyboards:
     ) -> Keyboard:
         p = PayloadStart(type="list", uuid=payload_uuid, action="change")
 
-        btn1 = CallbackButton.create("Название", p.add(inner=["field", "title"]))
-        btn2 = CallbackButton.create("Описание", p.add(inner=["field", "description"]))
-        btn3 = CallbackButton.create("Тип", p.add(inner=["field", "type"]))
-        btn4 = CallbackButton.create("Содержимое", p.add(inner=["values", "start"]))
+        btn1 = CallbackButton.create("Название", p.add(inner=("field", "title")))
+        btn2 = CallbackButton.create("Описание", p.add(inner=("field", "description")))
+        btn3 = CallbackButton.create("Тип", p.add(inner=("field", "type")))
+        btn4 = CallbackButton.create("Содержимое", p.add(inner=("values", "start")))
         btn5 = CallbackButton.create(
             "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
         )
@@ -47,7 +47,7 @@ class Keyboards:
         type: str,
         payload_uuid: UUID,
         action: str,
-        inner: str | list[str] | None = None,
+        inner: str | tuple[str] | None = None,
     ) -> Keyboard:
         p = PayloadStart(type=type, uuid=payload_uuid, action=action, inner=inner)
 
@@ -66,9 +66,9 @@ class Keyboards:
             type="list", uuid=payload_uuid, action="change", inner="values"
         )
 
-        btn1 = CallbackButton.create("➕Добавить", p.add(inner=["add", "get"]))
-        btn2 = CallbackButton.create("🗑Удалить", p.add(inner=["delete", "get"]))
-        btn3 = CallbackButton.create("✏️Изменить", p.add(inner=["change", "get_id"]))
+        btn1 = CallbackButton.create("➕Добавить", p.add(inner=("add", "get")))
+        btn2 = CallbackButton.create("🗑Удалить", p.add(inner=("delete", "get")))
+        btn3 = CallbackButton.create("✏️Изменить", p.add(inner=("change", "get_id")))
         btn4 = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
 
         keyboard = [[btn1, btn2], [btn3, btn4]]
@@ -82,10 +82,10 @@ class Keyboards:
         p = PayloadStart(type="list", uuid=payload_uuid, action="change", inner="value")
 
         btn1 = CallbackButton.create(
-            "✏️Изменить", p.add(inner=["change", f"{value_id}"])
+            "✏️Изменить", p.add(inner=("change", f"{value_id}"))
         )
-        btn2 = CallbackButton.create("🗑Удалить", p.add(inner=["delete", f"{value_id}"]))
-        btn3 = CallbackButton.create("➡️Вернуться", p.add(inner=["escape", came_from]))
+        btn2 = CallbackButton.create("🗑Удалить", p.add(inner=("delete", f"{value_id}")))
+        btn3 = CallbackButton.create("➡️Вернуться", p.add(inner=("escape", came_from)))
 
         keyboard = [[btn1, btn2], [btn3]]
 

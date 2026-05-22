@@ -153,7 +153,7 @@ async def list_field_get(
 
     text = f"✏️Напишите нов{"ый" if field == "type" else "ое"} <b>{GN.get(field).capitalize()}</b>\n"
 
-    status = create_status(type="list", uuid=payload_uuid, action="set", inner=["field", field])
+    status = create_status(type="list", uuid=payload_uuid, action="set", inner=("field", field))
     print("===request_list_field", message)
 
     await message.status(status)
@@ -203,7 +203,7 @@ async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.status(name="List-Delete")
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["first", "yes"]}), allowed="List-Delete", checkers=list_checker)
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ("first", "yes")}), allowed="List-Delete", checkers=list_checker)
 async def second_delete(message: Message, payload_uuid: UUID) -> None:
     await message.edit(
         "Вы <b>точно</b> уверены, что хотите <b>удалить</b> список?",
@@ -214,7 +214,7 @@ async def second_delete(message: Message, payload_uuid: UUID) -> None:
     )
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["second", "yes"]}), allowed="List-Delete", checkers=list_checker)
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ("second", "yes")}), allowed="List-Delete", checkers=list_checker)
 async def final_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
 
@@ -227,8 +227,8 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
 
 
 @broker.check([
-    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["first", "no"]}),
-    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["second", "no"]})
+    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ("first", "no")}),
+    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ("second", "no")})
 ], "List-Delete")
 async def cancel_delete(message: Message) -> None:
     await message.delete()

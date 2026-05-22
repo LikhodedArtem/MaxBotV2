@@ -6,7 +6,7 @@ __all__ = ["Status", "Statuses"]
 
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from callback.payload_schemes import Payload
 
@@ -20,6 +20,8 @@ class Status(BaseModel):
         is_background: если False, то не учитывается при проверке статусов status_check
         send_callback: если True, то отправляется callback от статуса
     """
+
+    model_config = ConfigDict(frozen=True)
 
     name: Optional[str] = None
     payload: Optional[Payload] = None

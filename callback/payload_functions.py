@@ -40,7 +40,9 @@ def restore_payload(payload: str) -> Payload:
         tags = {"t": "type", "u": "uuid", "a": "action", "i": "inner"}
         regular = r"(?P<tag>[A-Za-z]\d*)=(?P<value>[^&=\s]+)"
 
-        data = {"type": None, "action": None, "inner": []}
+        data = {"type": None, "action": None}
+
+        inner = ()
 
         find = re.findall(regular, payload)
         for item in range(len(find)):
@@ -50,9 +52,11 @@ def restore_payload(payload: str) -> Payload:
             if tag in ("t", "u", "a"):
                 data[tags[tag]] = value
             elif bool(re.fullmatch(r"i\d+", tag)):
-                data["inner"].append(value)
+                inner += (value,)
             else:
                 raise ValueError("Несуществующий ключ в Payload")
+
+        data["inner"] = inner
 
         assert None not in list(data.values()), "Один из ключей отсутствует в Payload"
 

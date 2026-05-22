@@ -311,11 +311,11 @@ class EventBroker:
                     allowed_statuses = allowed
 
                 if isinstance(allowed[0], Status):
-                     pass
+                     allowed_statuses = set(allowed_statuses)
                 elif isinstance(allowed[0], dict):
-                    allowed_statuses = list(map(lambda x: Status(payload=Payload(**x)), allowed_statuses))
+                    allowed_statuses = set(map(lambda x: Status(payload=Payload(**x)), allowed_statuses))
                 elif isinstance(allowed[0], str):
-                    allowed_statuses = list(map(lambda x: Status(name=x), allowed_statuses))
+                    allowed_statuses = set(map(lambda x: Status(name=x), allowed_statuses))
                 else:
                     raise ValueError(f"Передан не верный формат allowed: {allowed}")
             else:
@@ -331,9 +331,8 @@ class EventBroker:
                     for status in allowed_statuses:
                         for event in events:
                             self.subscribe_on_event_with_status(event, wrapper, status)
-                else:
-                    for event in events:
-                        self.subscribe_on_event(event, wrapper)
+                for event in events:
+                    self.subscribe_on_event(event, wrapper)
 
             return wrapper
 
