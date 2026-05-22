@@ -15,12 +15,13 @@ from crud import (
     get_mylist_with_values_by_uuid,
     create_user,
     get_user_by_max_id,
-    update_mylist_field, delete_mylist_with_values_by_uuid,
+    update_mylist_field, delete_mylist_with_values_by_uuid, create_mylist_value, delete_mylist_value_by_id,
+    update_mylist_value_value_by_id
 )
 
 from messages.message_schemes import Message, ContactMessage
 from status.status_functions import create_status
-from handlers.help_functions import mylist_values_to_form
+from handlers.help_functions import *
 
 
 @broker.check(Event.MESSAGE_COMMAND("reg"))
@@ -97,14 +98,7 @@ async def new_list(message: Message) -> None:
 
 
 async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) -> None:
-    status = create_status(
-        type="list",
-        uuid=payload_uuid,
-        action="view",
-        inner="list",
-        is_background=True,
-        send_callback=False,
-    )
+    status = create_status(name="List-View", send_callback=False)
     await message.status(status)
 
     async with db_helper.session_factory() as session:
@@ -144,10 +138,10 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
 @broker.check(
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "change", "inner": "field"}
-    ), checkers=list_checker
+    ), checkers=list_checker, allowed="List-View"
 )
 async def list_field_get(
-    message: Message, payload_uuid: UUID, payload_inner: list[str]
+    message: Message, payload_uuid: UUID, payload_inner: tuple[str]
 ) -> None:
     field = payload_inner[-1]
 
@@ -165,7 +159,7 @@ async def list_field_get(
     Event.STATUS_CALLBACK(payload={"type": "list", "action": "set", "inner": "field"})
 )
 async def list_field_set(
-    message: Message, payload_uuid: UUID, payload_inner: list[str]
+    message: Message, payload_uuid: UUID, payload_inner: tuple[str]
 ) -> None:
     field = payload_inner[-1]
 
@@ -189,7 +183,7 @@ async def list_field_set(
 @broker.check(
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "delete", "inner": "start"}
-    ), checkers=list_checker
+    ), checkers=list_checker, allowed="List-View"
 )
 async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.answer(
@@ -229,7 +223,133 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
 @broker.check([
     Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ("first", "no")}),
     Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ("second", "no")})
-], "List-Delete")
+], "List-Delete", checkers=list_checker)
 async def cancel_delete(message: Message) -> None:
     await message.delete()
     await message.clear_status()
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "start")}), checkers=list_checker, allowed="List-View")
+async def view_values(message: Message, payload_uuid: UUID) -> None:
+    status = create_status(name="Values-View", send_callback=False)
+    await message.status(status, send_callback=False)
+
+    async with db_helper.session_factory() as session:
+        mylist = await get_mylist_with_values_by_uuid(session, payload_uuid)
+        values = mylist.values
+
+    print("===values", values)
+
+    name = f' "{mylist.title}"' if mylist.title is not None else ""
+
+    text = (
+        f"📋<b>Содержание</b> списка{name}:\n" f"{mylist_values_to_form(values)}"
+    )
+
+    await message.answer(
+        text, "inline_keyboard", payload=Keyboards.change_list_values(payload_uuid)
+    )
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "add", "get")}), allowed="Values-View", checkers=list_checker)
+async def add_value_get(message: Message, payload_uuid: UUID) -> None:
+    await message.answer("✏️Напишите новый <b>пункт</b> списка")
+
+    status = create_status(
+        type="list", uuid=payload_uuid, action="change", inner=("values", "add", "set")
+    )
+    await message.status(status)
+
+@broker.check(Event.STATUS_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "add", "set")}), allowed="Values-View", checkers=list_checker)
+async def add_value_set(message: Message, payload_uuid: UUID) -> None:
+    async with db_helper.session_factory() as session:
+        await create_mylist_value(session, payload_uuid, message.body.text)
+
+        await message.answer("✅Новый пункт создан")
+
+        await message.clear_status()
+
+        await view_values(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "delete", "get")}), allowed="Values-View", checkers=list_checker)
+async def delete_value_get(message: Message, payload_uuid: UUID) -> None:
+    await message.answer("🗑Напишите <b>номер пункта</b> для удаления")
+
+    status = create_status(type="list", uuid=payload_uuid, action="change", inner=("values", "delete", "set"))
+    await message.status(status)
+
+@broker.check(Event.STATUS_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "delete", "set")}), allowed="Values-View", checkers=list_checker)
+async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
+    text_id = message.body.text
+    try:
+        value_id = await get_mylist_value_id_by_number(payload_uuid, text_id)
+
+        if value_id is None:
+            raise ValueError
+
+        async with db_helper.session_factory() as session:
+            await delete_mylist_value_by_id(session, value_id)
+        await message.answer("✅Пункт успешно удалён")
+
+    except ValueError:
+        await message.answer("❌Неправильный формат данных")
+
+    await message.clear_status()
+
+    await view_values(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "change", "get_id")}), allowed="Values-View", checkers=list_checker)
+async def change_value_get_id(message: Message, payload_uuid: UUID) -> None:
+    await message.answer("✏️Напишите <b>номер пункта</b> для изменения")
+
+    status = create_status(
+        type="list", uuid=payload_uuid, action="change", inner=("values", "change", "get_value")
+    )
+    await message.status(status)
+
+
+@broker.check(Event.STATUS_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "change", "get_value")}))
+async def change_value_get_value(message: Message, payload_uuid: UUID) -> None:
+    text_id = message.body.text
+    try:
+        value_id = await get_mylist_value_id_by_number(payload_uuid, text_id)
+
+        if value_id is None:
+            raise ValueError
+
+        await message.answer("✏️Напишите <b>новое значение</b> этого пункта")
+
+        status = create_status(
+            type="list", uuid=payload_uuid, action="change", inner=("values", "change", "set", f"{value_id}")
+        )
+        await message.status(status)
+
+    except ValueError:
+        await message.answer("❌Неправильный формат данных")
+
+        await message.clear_status()
+
+        await view_values(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(Event.STATUS_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "change", "set")}))
+async def change_value_set(message: Message, payload_uuid: UUID, payload_inner: tuple[str]) -> None:
+    value_id = int(payload_inner[-1])
+
+    async with db_helper.session_factory() as session:
+        await update_mylist_value_value_by_id(session, value_id, message.body.text)
+
+    await message.answer("✅Пункт изменён")
+
+    await message.clear_status()
+
+    await view_values(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "escape")}), allowed="Values-View", checkers=list_checker)
+async def change_value_escape(message: Message, payload_uuid: UUID) -> None:
+    await message.clear_status()
+
+    await view_list(message=message, payload_uuid=payload_uuid)

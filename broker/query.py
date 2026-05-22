@@ -48,7 +48,7 @@ class Query(BaseModel):
         return None
 
     @property
-    def payload_inner(self) -> list[str] | None:
+    def payload_inner(self) -> tuple[str, ...] | None:
         if self.payload is not None:
             return self.payload.inner.value
         return None
