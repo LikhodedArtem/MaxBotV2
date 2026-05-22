@@ -232,14 +232,14 @@ class EventBroker:
                 handlers |= current_node[key]
             else:
                 handlers |= self.get_remain_handlers(current_node[key])
-        return current_node
+        return handlers
 
     def current_to_node(self, current: Optional[dict]) -> dict:
         """Вспомогательная функция. Позволяет определиться с
         выбором текущей позиции (current_node)в подписчиках брокера
 
         current:
-            None -> self.subscribers
+            None -> self.subscribers\n
             dict -> dict
 
         Args:

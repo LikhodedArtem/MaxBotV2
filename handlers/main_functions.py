@@ -143,8 +143,8 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
 
 @broker.check(
     Event.MESSAGE_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": "field"}, func=list_checker
-    )
+        payload={"type": "list", "action": "change", "inner": "field"}
+    ), checkers=list_checker
 )
 async def list_field_get(
     message: Message, payload_uuid: UUID, payload_inner: list[str]
@@ -189,7 +189,7 @@ async def list_field_set(
 @broker.check(
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "delete", "inner": "start"}
-    )
+    ), checkers=list_checker
 )
 async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.answer(
@@ -203,7 +203,7 @@ async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.status(name="List-Delete")
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["first", "yes"]}), allowed="List-Delete")
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["first", "yes"]}), allowed="List-Delete", checkers=list_checker)
 async def second_delete(message: Message, payload_uuid: UUID) -> None:
     await message.edit(
         "Вы <b>точно</b> уверены, что хотите <b>удалить</b> список?",
@@ -214,7 +214,7 @@ async def second_delete(message: Message, payload_uuid: UUID) -> None:
     )
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["second", "yes"]}), allowed="List-Delete")
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["second", "yes"]}), allowed="List-Delete", checkers=list_checker)
 async def final_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
 
