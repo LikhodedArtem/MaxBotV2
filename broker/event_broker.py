@@ -20,15 +20,19 @@ class EventBroker:
         self.checkers = checkers if isinstance(checkers, list) else [checkers]
 
     @staticmethod
-    def go_to_payload_event(event: Status | AllEvents, action: Literal["create", "go"], current_node: dict) -> None | dict:
+    def go_to_payload_event(
+        event: Status | AllEvents, action: Literal["create", "go"], current_node: dict
+    ) -> None | dict:
         if hasattr(event, "name"):
             if hasattr(event, "name") and event.name is not None:
                 if "__names__" not in current_node:
-                    if action == "go": return
+                    if action == "go":
+                        return
                     current_node["__names__"] = {}
                 current_node = current_node["__names__"]
                 if event.name not in current_node:
-                    if action == "go": return
+                    if action == "go":
+                        return
                     current_node[event.name] = {}
                 current_node = current_node[event.name]
 
@@ -36,27 +40,31 @@ class EventBroker:
 
         if payload is not None:
             if payload.type not in current_node:
-                if action == "go": return
+                if action == "go":
+                    return
                 current_node[payload.type] = {"__handlers__": set()}
 
             current_node = current_node[payload.type]
 
             if payload.action not in current_node:
-                if action == "go": return
+                if action == "go":
+                    return
                 current_node[payload.action] = {"__handlers__": set()}
 
             current_node = current_node[payload.action]
 
             for inner_item in payload.inner:
                 if inner_item not in current_node:
-                    if action == "go": return
+                    if action == "go":
+                        return
                     current_node[inner_item] = {"__handlers__": set()}
                 current_node = current_node[inner_item]
 
         return current_node
 
-
-    def subscribe_on_event_with_status(self, event: AllEvents, handler: Handler, status: Optional[Status]) -> None:
+    def subscribe_on_event_with_status(
+        self, event: AllEvents, handler: Handler, status: Optional[Status]
+    ) -> None:
         if status is None:
             self.subscribe_on_event(event, handler)
         else:
@@ -68,7 +76,9 @@ class EventBroker:
 
             self.subscribe_on_event(event, handler, current_node)
 
-    def unsubscribe_on_event_with_status(self, event: AllEvents, handler: Handler, status: Optional[Status]) -> None:
+    def unsubscribe_on_event_with_status(
+        self, event: AllEvents, handler: Handler, status: Optional[Status]
+    ) -> None:
         if status is None:
             self.unsubscribe_from_event(event, handler)
         else:
@@ -83,7 +93,9 @@ class EventBroker:
 
             self.unsubscribe_from_event(event, handler, current_node)
 
-    def get_handlers_from_event_with_status(self, event: AllEvents, status: Optional[Status]) -> set[Handler]:
+    def get_handlers_from_event_with_status(
+        self, event: AllEvents, status: Optional[Status]
+    ) -> set[Handler]:
         if status is None:
             return self.get_handlers_from_event(event)
         else:
@@ -98,7 +110,9 @@ class EventBroker:
 
             return self.get_handlers_from_event(event, current_node)
 
-    def subscribe_on_event(self, event: AllEvents, handler: Handler, current: Optional[dict] = None) -> None:
+    def subscribe_on_event(
+        self, event: AllEvents, handler: Handler, current: Optional[dict] = None
+    ) -> None:
         current_node = self.current_to_node(current)
 
         if not isinstance(event, PayloadEvent):
@@ -108,7 +122,9 @@ class EventBroker:
         else:
             self.subscribe_on_payload_event(event, handler, current_node)
 
-    def subscribe_on_payload_event(self, event: PayloadEvent, handler: Handler, current: Optional[dict] = None) -> None:
+    def subscribe_on_payload_event(
+        self, event: PayloadEvent, handler: Handler, current: Optional[dict] = None
+    ) -> None:
         current_node = self.current_to_node(current)
 
         if event.sub_event not in current_node:
@@ -120,7 +136,9 @@ class EventBroker:
 
         current_node["__handlers__"].add(handler)
 
-    def unsubscribe_from_event(self, event: AllEvents, handler: Handler, current: Optional[dict] = None) -> None:
+    def unsubscribe_from_event(
+        self, event: AllEvents, handler: Handler, current: Optional[dict] = None
+    ) -> None:
         current_node = self.current_to_node(current)
 
         if not isinstance(event, PayloadEvent):
@@ -162,7 +180,9 @@ class EventBroker:
         else:
             return self.get_handlers_from_payload_event(event, current_node)
 
-    def get_handlers_from_payload_event(self, event: PayloadEvent, current: Optional[dict] = None) -> set[Handler]:
+    def get_handlers_from_payload_event(
+        self, event: PayloadEvent, current: Optional[dict] = None
+    ) -> set[Handler]:
         """Используется для получения всех handler'ов через подписку на payload.
         Для подписчиков на статус подразумевает получение положения уже в этом статусе,
         что реализуется через get_handlers_from_event_with_status
@@ -256,7 +276,12 @@ class EventBroker:
     def check(
         self,
         on_events: Optional[AllEvents | list[AllEvents]] = None,
-        allowed: Optional[Status | list[Status] | dict[str, str] | list[dict[str, str] | str | list[str]]] = None,
+        allowed: Optional[
+            Status
+            | list[Status]
+            | dict[str, str]
+            | list[dict[str, str] | str | list[str]]
+        ] = None,
         checkers: Optional[list[Predicate] | Predicate] = None,
     ) -> Callable[[Handler], Handler]:
         """Многофункциональный декоратор, который является главной возможностью взаимодействовать
@@ -304,6 +329,7 @@ class EventBroker:
                         "Ошибка в handler '%s'",
                         handler.__name__,
                     )
+
             if allowed is not None:
                 if not isinstance(allowed, list):
                     allowed_statuses = [allowed]
@@ -311,11 +337,15 @@ class EventBroker:
                     allowed_statuses = allowed
 
                 if isinstance(allowed[0], Status):
-                     allowed_statuses = set(allowed_statuses)
+                    allowed_statuses = set(allowed_statuses)
                 elif isinstance(allowed[0], dict):
-                    allowed_statuses = set(map(lambda x: Status(payload=Payload(**x)), allowed_statuses))
+                    allowed_statuses = set(
+                        map(lambda x: Status(payload=Payload(**x)), allowed_statuses)
+                    )
                 elif isinstance(allowed[0], str):
-                    allowed_statuses = set(map(lambda x: Status(name=x), allowed_statuses))
+                    allowed_statuses = set(
+                        map(lambda x: Status(name=x), allowed_statuses)
+                    )
                 else:
                     raise ValueError(f"Передан не верный формат allowed: {allowed}")
             else:
@@ -391,7 +421,6 @@ class EventBroker:
         status = query.status
 
         all_handlers = self.get_handlers_from_event_with_status(event, status)
-
 
         if not all_handlers:
             return

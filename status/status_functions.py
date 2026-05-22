@@ -25,14 +25,16 @@ def create_status(
     """Функция для удобного создания Payload статуса"""
 
     if (type is None or action is None) and not (
-            type is None and action is None or type is not None and action is not None):
-        raise ValueError("Неправильные аргументы для создания статуса: type и action должны либо оба отсутствовать либо оба быть переданными")
+        type is None and action is None or type is not None and action is not None
+    ):
+        raise ValueError(
+            "Неправильные аргументы для создания статуса: type и action должны либо оба отсутствовать либо оба быть переданными"
+        )
 
     if type is not None and action is not None:
         payload = Payload(type=type, uuid=uuid, action=action, inner=Inner(value=inner))
     else:
         payload = None
-
 
     status_kwargs = {
         "name": name,
@@ -66,11 +68,11 @@ async def add_status_query(queries: list[Query]) -> list[Query]:
 
             if sender_id != bot_info.my_id:
                 if status is not None and status.send_callback:
-                        status_query = deepcopy(query)
-                        status_query.event = Event.STATUS_CALLBACK(
-                            name=status.name, payload=status.payload
-                            )
-                        status_query.real_payload = status.payload
+                    status_query = deepcopy(query)
+                    status_query.event = Event.STATUS_CALLBACK(
+                        name=status.name, payload=status.payload
+                    )
+                    status_query.real_payload = status.payload
 
             break
 
