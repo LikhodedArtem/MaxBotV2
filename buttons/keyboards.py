@@ -56,6 +56,8 @@ class Keyboards:
 
         keyboard = [[btn1, btn2]]
 
+        print("===Buttons", btn1, btn2)
+
         return {"buttons": keyboard}
 
     @classmethod

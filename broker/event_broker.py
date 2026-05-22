@@ -116,8 +116,6 @@ class EventBroker:
 
         current_node = current_node[event.sub_event]
 
-        print(handler, event.payload)
-
         current_node = self.go_to_payload_event(event, "create", current_node)
 
         current_node["__handlers__"].add(handler)

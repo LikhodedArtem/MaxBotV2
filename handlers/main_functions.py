@@ -9,6 +9,7 @@ from buttons.keyboards import Keyboards
 from core.global_names import GN
 from core.models import mylist
 from core.models.db_helper import db_helper
+from handlers.checkers import list_checker
 from crud import (
     create_mylist,
     get_mylist_with_values_by_uuid,
@@ -202,7 +203,7 @@ async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.status(name="List-Delete")
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": "first"}), allowed="List-Delete")
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["first", "yes"]}), allowed="List-Delete")
 async def second_delete(message: Message, payload_uuid: UUID) -> None:
     await message.edit(
         "Вы <b>точно</b> уверены, что хотите <b>удалить</b> список?",
@@ -213,7 +214,7 @@ async def second_delete(message: Message, payload_uuid: UUID) -> None:
     )
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": "second"}), allowed="List-Delete")
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["second", "yes"]}), allowed="List-Delete")
 async def final_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
 
@@ -222,4 +223,13 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
 
     await message.answer("✅Список безвозвратно удалён")
 
+    await message.clear_status()
+
+
+@broker.check([
+    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["first", "no"]}),
+    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "delete", "inner": ["second", "no"]})
+], "List-Delete")
+async def cancel_delete(message: Message) -> None:
+    await message.delete()
     await message.clear_status()

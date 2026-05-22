@@ -6,6 +6,9 @@ from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Optional
 
+from click import command
+from pydantic import BaseModel, ConfigDict
+
 from callback.payload_schemes import Payload
 
 
@@ -19,17 +22,17 @@ class Event(Enum):
     def __call__(self, *args, **kwargs) -> AllEvents:
         if self == Event.MESSAGE_CREATED:
             if len(args) > 0 and isinstance(args[0], str):
-                return MessageEvent(args[0])
+                return MessageEvent(text=args[0])
             if "text" in kwargs and isinstance(kwargs["text"], str):
-                return MessageEvent(kwargs["text"])
+                return MessageEvent(text=kwargs["text"])
 
             raise ValueError("Не правильный формат данных для MESSAGE_CREATED")
 
         if self == Event.MESSAGE_COMMAND:
             if len(args) > 0 and isinstance(args[0], str):
-                return CommandEvent(args[0])
+                return CommandEvent(command=args[0])
             if "command" in kwargs and isinstance(kwargs["command"], str):
-                return CommandEvent(kwargs["command"])
+                return CommandEvent(command=kwargs["command"])
 
             raise ValueError("Не правильный формат данных для MESSAGE_COMMAND")
 
@@ -63,18 +66,21 @@ class Event(Enum):
         raise TypeError(f"Событие {self.name} нельзя вызвать с аргументом")
 
 
-@dataclass(frozen=True)
-class MessageEvent:
+class MessageEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     text: str
 
 
-@dataclass(frozen=True)
-class CommandEvent:
+class CommandEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     command: str
 
 
-@dataclass(frozen=True)
-class PayloadEvent:
+class PayloadEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     sub_event: Event
     payload: Optional[Payload] = None
 
@@ -84,13 +90,11 @@ class SubPayloadEvent(Enum):
     MESSAGE_CALLBACK = auto()
 
 
-@dataclass(frozen=True)
 class StatusCallback(PayloadEvent):
     sub_event: Event = SubPayloadEvent.STATUS_CALLBACK
     name: Optional[str] = None
 
 
-@dataclass(frozen=True)
 class MessageCallback(PayloadEvent):
     sub_event: Event = SubPayloadEvent.MESSAGE_CALLBACK
 
