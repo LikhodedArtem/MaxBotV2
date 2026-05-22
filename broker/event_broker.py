@@ -142,6 +142,19 @@ class EventBroker:
         current_node["__handlers__"].discard(handler)
 
     def get_handlers_from_event(self, event: AllEvents, current: Optional[dict] = None):
+        """Используется для получения всех handler'ов для всех видов событий.
+        Для подписчиков на статус подразумевает получение положения уже в этом статусе,
+        что реализуется через get_handlers_from_event_with_status
+
+        Args:
+            event: Любое событие, из которого мы хоти получить подписчиков
+            current: Текущее положение для поисков подписчиков
+
+        Returns:
+            Множество найденных handler'ов
+
+        """
+
         current_node = self.current_to_node(current)
 
         if not isinstance(event, PayloadEvent):
@@ -150,6 +163,18 @@ class EventBroker:
             return self.get_handlers_from_payload_event(event, current_node)
 
     def get_handlers_from_payload_event(self, event: PayloadEvent, current: Optional[dict] = None) -> set[Handler]:
+        """Используется для получения всех handler'ов через подписку на payload.
+        Для подписчиков на статус подразумевает получение положения уже в этом статусе,
+        что реализуется через get_handlers_from_event_with_status
+
+        Args:
+            event: Payload событие, из которого мы хоти получить подписчиков
+            current: Текущее положение для поисков подписчиков
+
+        Returns:
+            Множество найденных handler'ов
+        """
+
         current_node = self.current_to_node(current)
 
         if event.sub_event not in current_node:
@@ -187,18 +212,43 @@ class EventBroker:
 
         return handlers
 
-    def get_remain_handlers(self, subscribers: dict):
+    def get_remain_handlers(self, current_node: dict) -> set[Handler]:
+        """По системе получения подписчиков через Inner: когда
+        мы нашли нужного подписчика через объекты Inner, необходимо "добрать"
+        все оставшиеся handler'ы нашего события, что и делает данная функция
+
+        Args:
+            current_node: текущая позиция в подписчиках брокера
+
+        Returns:
+            Множество всех найденных handler'ов
+        """
+
         handlers = set()
-        for key in subscribers:
+        for key in current_node:
             if isinstance(key, AllEvents):
                 pass
             if key == "__handlers__":
-                handlers |= subscribers[key]
+                handlers |= current_node[key]
             else:
-                handlers |= self.get_remain_handlers(subscribers[key])
-        return handlers
+                handlers |= self.get_remain_handlers(current_node[key])
+        return current_node
 
-    def current_to_node(self, current: dict):
+    def current_to_node(self, current: Optional[dict]) -> dict:
+        """Вспомогательная функция. Позволяет определиться с
+        выбором текущей позиции (current_node)в подписчиках брокера
+
+        current:
+            None -> self.subscribers
+            dict -> dict
+
+        Args:
+            current: текущая позиция в подписчиках брокера
+
+        Returns:
+            Выбранное положение в подписчиках брокера
+        """
+
         if current is None:
             return self.subscribers
         return current
@@ -207,21 +257,30 @@ class EventBroker:
         self,
         on_events: Optional[AllEvents | list[AllEvents]] = None,
         allowed: Optional[Status | list[Status] | dict[str, str] | list[dict[str, str] | str | list[str]]] = None,
-        func: Optional[list[Predicate] | Predicate] = None,
+        checkers: Optional[list[Predicate] | Predicate] = None,
     ) -> Callable[[Handler], Handler]:
+        """Многофункциональный декоратор, который является главной возможностью взаимодействовать
+        с брокером событий.
+
+        Args:
+            on_events: Событие или список событий, на которые будет подписана функция
+            allowed: Статус или список статусов
+            checkers: Функция или список функций. Если не все функции вернули True, то функция подписчик выполняться не будет
+        """
+
         def decorator(handler: Handler) -> Handler:
-            if func is None:
+            if checkers is None:
                 function_list = []
-            elif not isinstance(func, list):
-                function_list = [func]
+            elif not isinstance(checkers, list):
+                function_list = [checkers]
             else:
-                function_list = func
+                function_list = checkers
 
             @wraps(handler)
             async def wrapper(query: Optional[Query] = None, **kwargs) -> None:
                 try:
                     if query is not None:
-                        if func is not None:
+                        if checkers is not None:
                             for function in function_list:
                                 predicate_kwargs = self._build_handler_kwargs(
                                     function, query
@@ -234,7 +293,7 @@ class EventBroker:
                         await handler(**handler_kwargs)
 
                     else:
-                        if func is not None:
+                        if checkers is not None:
                             for function in function_list:
                                 if not await function(**kwargs):
                                     return

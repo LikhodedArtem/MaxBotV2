@@ -143,7 +143,7 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
 
 @broker.check(
     Event.MESSAGE_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": "field"}
+        payload={"type": "list", "action": "change", "inner": "field"}, func=list_checker
     )
 )
 async def list_field_get(
