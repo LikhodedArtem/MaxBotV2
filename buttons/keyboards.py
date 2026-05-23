@@ -91,3 +91,28 @@ class Keyboards:
         keyboard = [[btn1, btn2], [btn3]]
 
         return {"buttons": keyboard}
+
+    @classmethod
+    def lists(
+        cls, lists_info: list[tuple[str, UUID], ...] | list, first: bool = True, final: bool = False
+    ) -> Keyboard:
+        p = PayloadStart(type="lists", action="view")
+
+        keyboard = []
+
+        for index, info in enumerate(lists_info):
+            btn = CallbackButton.create(f"{index + 1}. {info[0]}", p.add(uuid=info[1], inner="list"))
+            keyboard.append([btn])
+
+        text1, inner1 = ("⏹️", "nothing") if first else ("◀️", "left")
+        text2, inner2 = ("⏹️", "nothing") if final else ("▶️", "right")
+
+        btn1 = CallbackButton.create(text1, p.add(inner=inner1))
+        btn2 = CallbackButton.create(text2, p.add(inner=inner2))
+
+        keyboard.append([btn1, btn2])
+
+        escape_btn = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
+        keyboard.append([escape_btn])
+
+        return {"buttons": keyboard}

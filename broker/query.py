@@ -61,3 +61,65 @@ class Query(BaseModel):
         if self.message is not None:
             return self.message.sender
         return None
+
+    @property
+    def status_payload(self) -> Payload | None:
+        if self.status is not None:
+            return self.status.payload
+        return None
+
+    @property
+    def status_type(self) -> str | None:
+        if self.status_payload is not None:
+            return self.status_payload.type
+        return None
+
+    @property
+    def status_uuid(self) -> UUID | None:
+        if self.status_payload is not None:
+            return self.status_payload.uuid
+        return None
+
+    @property
+    def status_action(self) -> str | None:
+        if self.status_payload is not None:
+            return self.status_payload.action
+        return None
+
+    @property
+    def status_inner(self) -> tuple[str, ...] | None:
+        if self.status_payload is not None:
+            return self.status_payload.inner.value
+        return None
+
+    @property
+    def callback_payload(self) -> Payload | None:
+        if self.callback is not None:
+            return self.callback.payload
+        return None
+
+
+    @property
+    def callback_type(self) -> str | None:
+        if self.callback_payload is not None:
+            return self.callback_payload.type
+        return None
+
+    @property
+    def callback_uuid(self) -> UUID | None:
+        if self.callback_payload is not None:
+            return self.callback_payload.uuid
+        return None
+
+    @property
+    def callback_action(self) -> str | None:
+        if self.callback_payload is not None:
+            return self.callback_payload.action
+        return None
+
+    @property
+    def callback_inner(self) -> tuple[str, ...] | None:
+        if self.callback_payload is not None:
+            return self.callback_payload.inner.value
+        return None
+

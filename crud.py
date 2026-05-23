@@ -213,7 +213,9 @@ async def update_made_of_mylist_value(
     await session.commit()
 
 
-async def get_mylist_value_id_by_number(session: AsyncSession, mylist_uuid: UUID, number: int) -> int| None:
+async def get_mylist_value_id_by_number(
+    session: AsyncSession, mylist_uuid: UUID, number: int
+) -> int | None:
     stmt = (
         select(MyListValue.id)
         .where(MyListValue.mylist_uuid == mylist_uuid)
@@ -228,3 +230,20 @@ async def get_mylist_value_id_by_number(session: AsyncSession, mylist_uuid: UUID
     if target_id is None:
         return None
     return target_id
+
+
+async def get_mylists_by_max_id(
+    session: AsyncSession, max_id: int, page: int = 1
+) -> list[MyList] | None:
+    stmt = (
+        select(MyList)
+        .where(MyList.user_id == max_id)
+        .order_by(MyList.id)
+        .limit(10)
+        .offset((page - 1) * 10)
+    )
+
+    result = await session.execute(stmt)
+    mylists = result.scalars().all() or None
+
+    return mylists

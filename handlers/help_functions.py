@@ -1,4 +1,4 @@
-__all__ = ["mylist_values_to_form", "format_get_mylist_value_id_by_number"]
+__all__ = ["mylist_values_to_form", "format_get_mylist_value_id_by_number", "format_lists_info"]
 
 from uuid import UUID
 
@@ -31,7 +31,9 @@ def mylist_values_to_form(
     return values_text
 
 
-async def format_get_mylist_value_id_by_number(obj_uuid: UUID, text_id: str) -> int | None:
+async def format_get_mylist_value_id_by_number(
+    obj_uuid: UUID, text_id: str
+) -> int | None:
     if not text_id.isdigit():
         return None
 
@@ -39,3 +41,12 @@ async def format_get_mylist_value_id_by_number(obj_uuid: UUID, text_id: str) -> 
 
     async with db_helper.session_factory() as session:
         return await get_mylist_value_id_by_number(session, obj_uuid, index)
+
+
+def format_lists_info(info: list[list[str | None | UUID]]):
+    for i in range(len(info)):
+        if info[i][0] is None or info[i][0] == "":
+            info[i][0] = "Без названия"
+        elif len(info[i][0]) > 18:
+            info[i][0] = "".join(list(info[i][0])[:18]) + "…"
+    return [(info[i][0], info[i][1]) for i in range(len(info))]

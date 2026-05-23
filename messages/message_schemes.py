@@ -221,30 +221,29 @@ class Callback(BaseModel):
 class UserMixin(BaseModel):
     user_id: int
 
-
     @property
     def my_status(self) -> Status | None:
         return get_status(self.user_id)
 
     async def answer(
-            self,
-            text: str,
-            type: Literal[
-                "base_text",
-                "video",
-                "audio",
-                "file",
-                "sticker",
-                "contact",
-                "inline_keyboard",
-                "location",
-            ] = "base_text",
-            link: Optional[str] = None,
-            payload: Optional[dict[str, Any]] = None,
-            notify: Optional[bool] = True,
-            format: Literal["html", "markdown"] = "html",
-            latitude: Optional[float] = None,
-            longitude: Optional[float] = None,
+        self,
+        text: str,
+        type: Literal[
+            "base_text",
+            "video",
+            "audio",
+            "file",
+            "sticker",
+            "contact",
+            "inline_keyboard",
+            "location",
+        ] = "base_text",
+        link: Optional[str] = None,
+        payload: Optional[dict[str, Any]] = None,
+        notify: Optional[bool] = True,
+        format: Literal["html", "markdown"] = "html",
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
     ) -> Message:
         message_data = create_message(
             text, type, link, payload, notify, format, latitude, longitude
@@ -256,21 +255,21 @@ class UserMixin(BaseModel):
         return message
 
     async def status(
-            self,
-            status: Optional[Status] = None,
-            name: Optional[str] = None,
-            payload: Optional[Payload] = None,
-            is_background: Optional[bool] = None,
-            send_callback: Optional[bool] = None,
+        self,
+        status: Optional[Status] = None,
+        name: Optional[str] = None,
+        payload: Optional[Payload] = None,
+        is_background: Optional[bool] = None,
+        send_callback: Optional[bool] = None,
     ) -> None:
         if status is None and name is None and payload is None:
             ValueError("Должно быть передано что-либо из: status, name, payload")
 
         if status is not None and (
-                name is not None
-                or payload is not None
-                or is_background is not None
-                or send_callback is not None
+            name is not None
+            or payload is not None
+            or is_background is not None
+            or send_callback is not None
         ):
             ValueError("Должно быть передано или status, или иные атрибуты")
 

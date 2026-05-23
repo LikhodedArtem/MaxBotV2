@@ -1,3 +1,4 @@
-__all__ = ["help", "view_list"]
+__all__ = ["help", "view_lists"]
 
-from .main_functions import *
+from .main_functions import help
+from .view_lists import view_lists

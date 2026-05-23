@@ -1,5 +1,3 @@
-__all__ = ["help", "view_list"]
-
 from uuid import UUID
 
 from broker import broker
@@ -17,8 +15,9 @@ from crud import (
     delete_mylist_with_values_by_uuid,
     create_mylist_value,
     delete_mylist_value_by_id,
-    update_mylist_value_value_by_id, update_made_of_mylist_value,
-    get_mylist_value_id_by_number
+    update_mylist_value_value_by_id,
+    update_made_of_mylist_value,
+    get_mylist_value_id_by_number,
 )
 
 from messages.message_schemes import Message, ContactMessage, Sender
@@ -92,7 +91,9 @@ async def new_list(message: Message) -> None:
 
 
 async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) -> None:
-    status = create_status(type="list", action="view", uuid=payload_uuid, send_callback=False)
+    status = create_status(
+        type="list", action="view", uuid=payload_uuid, send_callback=False
+    )
     await message.status(status)
 
     async with db_helper.session_factory() as session:
@@ -251,7 +252,12 @@ async def cancel_delete(message: Message) -> None:
     await message.clear_status()
 
 
-@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": "escape"}), allowed=GN.list_view)
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": "escape"}
+    ),
+    allowed=GN.list_view,
+)
 async def change_escape(message: Message) -> None:
     await message.clear_status()
 
@@ -266,7 +272,13 @@ async def change_escape(message: Message) -> None:
     allowed=GN.list_view,
 )
 async def view_values(message: Message, payload_uuid: UUID) -> None:
-    status = create_status(type="list", uuid=payload_uuid, action="view", inner="values", send_callback=False)
+    status = create_status(
+        type="list",
+        uuid=payload_uuid,
+        action="view",
+        inner="values",
+        send_callback=False,
+    )
     await message.status(status, send_callback=False)
 
     async with db_helper.session_factory() as session:
@@ -467,15 +479,22 @@ async def change_value_escape(message: Message, payload_uuid: UUID) -> None:
     await view_list(message=message, payload_uuid=payload_uuid)
 
 
-@broker.check(Event.MESSAGE_COMMAND, allowed=[GN.list_view, GN.values_view], without_allowed=False)
-async def mark_value(message: Message, payload_uuid: UUID, payload_inner: tuple[str]) -> None:
+@broker.check(
+    Event.MESSAGE_COMMAND, allowed=[GN.list_view, GN.values_view], without_allowed=False
+)
+async def mark_value(
+    message: Message, payload_uuid: UUID, payload_inner: tuple[str]
+) -> None:
     text = message.body.text
-    if not len(text) > 1: return
+    if not len(text) > 1:
+        return
     text_id = "".join(list(text)[1:])
-    if not text_id.isdigit(): return
+    if not text_id.isdigit():
+        return
 
     value_id = await format_get_mylist_value_id_by_number(payload_uuid, text_id)
-    if value_id is None: return
+    if value_id is None:
+        return
 
     async with db_helper.session_factory() as session:
         await update_made_of_mylist_value(session, payload_uuid, value_id)
