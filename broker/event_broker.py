@@ -4,6 +4,8 @@ import logging
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, Literal
 
+from fastapi.routing import get_request_handler
+
 from broker.event import *
 from broker.query import Query
 from callback.payload_schemes import Payload
@@ -19,9 +21,10 @@ class EventBroker:
         self.subscribers: dict[AllEvents, dict[str, set | dict] | set[Handler]] = {}
         self.checkers = checkers if isinstance(checkers, list) else [checkers]
 
+
     @staticmethod
-    def go_to_payload_event(
-        event: Status | AllEvents, action: Literal["create", "go"], current_node: dict
+    def go_to_payload_inner(
+            event: Status | AllEvents, action: Literal["create", "go"], current_node: dict
     ) -> None | dict:
         if hasattr(event, "name"):
             if hasattr(event, "name") and event.name is not None:
@@ -52,8 +55,15 @@ class EventBroker:
                 current_node[payload.action] = {"__handlers__": set()}
 
             current_node = current_node[payload.action]
+        return current_node
 
-            for inner_item in payload.inner:
+    def go_to_payload_event(
+        self, event: Status | AllEvents, action: Literal["create", "go"], current_node: dict
+    ) -> None | dict:
+        current_node = self.go_to_payload_inner(event, action, current_node)
+
+        if current_node is not None:
+            for inner_item in event.payload.inner:
                 if inner_item not in current_node:
                     if action == "go":
                         return
@@ -102,13 +112,30 @@ class EventBroker:
             if SubPayloadEvent.STATUS_CALLBACK not in self.subscribers:
                 return set()
             current_node = self.subscribers[SubPayloadEvent.STATUS_CALLBACK]
+            current_node = self.go_to_payload_inner(status, "go", current_node)
 
-            current_node = self.go_to_payload_event(status, "go", current_node)
+            handlers = set()
 
             if current_node is None:
-                return set()
+                return handlers
 
-            return self.get_handlers_from_event(event, current_node)
+            for inner_item in status.payload.inner:
+                handlers |= self.get_handlers_from_event(event, current_node)
+
+                if inner_item not in current_node:
+                    return handlers
+                current_node = current_node[inner_item]
+
+            return self.get_remain_status_handlers(event, current_node)
+
+    def get_remain_status_handlers(self, event: AllEvents, current_node: dict) -> set[Handler]:
+        handlers = self.get_handlers_from_event(event, current_node)
+        for key in current_node:
+            if isinstance(key, AllEvents):
+                pass
+            else:
+                handlers |= self.get_remain_status_handlers(event, current_node[key])
+        return handlers
 
     def subscribe_on_event(
         self, event: AllEvents, handler: Handler, current: Optional[dict] = None

@@ -12,8 +12,6 @@ from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
 from handlers.help_functions import *
 
-from .main_functions import view_list
-
 
 @broker.check(Event.MESSAGE_COMMAND("lists_view"))
 async def view_lists(message: Message, page: int = 1, edit: bool = False):
@@ -74,7 +72,7 @@ async def view_lists_left(message: Message, status_inner: tuple[str]):
     Event.MESSAGE_CALLBACK(
         payload={"type": "lists", "action": "view", "inner": "right"}
     ),
-    allowed={"type": "lists", "action": "view", "inner": "1"},
+    allowed={"type": "lists", "action": "view"},
     without_allowed=False
 )
 async def view_lists_right(message: Message, status_inner: tuple[str]):
@@ -88,4 +86,4 @@ async def view_lists_right(message: Message, status_inner: tuple[str]):
     allowed={"type": "lists", "action": "view"}
 )
 async def view_lists_view_list(message: Message, payload_uuid: UUID):
-    await view_list(message, payload_uuid)
+    print("ZZZZZZZZZZZZZZZZZZZZ") 
