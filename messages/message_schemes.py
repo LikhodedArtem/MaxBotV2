@@ -53,6 +53,10 @@ class MessageMixin(BaseModel):
     sender: Sender
 
     @property
+    def real_user_id(self) -> int:
+        return self.sender.user_id if self.sender.user_id != bot_info.my_id else self.recipient.user_id
+
+    @property
     def my_status(self) -> Status | None:
         return get_status(self.sender.user_id)
 
@@ -133,12 +137,6 @@ class MessageMixin(BaseModel):
         ):
             ValueError("Должно быть передано или status, или иные атрибуты")
 
-        user_id = (
-            self.sender.user_id
-            if self.sender.user_id != bot_info.my_id
-            else self.recipient.user_id
-        )
-
         if status is None:
             from status.status_functions import create_status
 
@@ -151,18 +149,12 @@ class MessageMixin(BaseModel):
                 send_callback=send_callback,
             )
 
-        set_status(user_id, status)
+        set_status(self.real_user_id, status)
 
     async def clear_status(self):
-        user_id = (
-            self.sender.user_id
-            if self.sender.user_id != bot_info.my_id
-            else self.recipient.user_id
-        )
-
         from status.status_crud import clear_status
 
-        clear_status(user_id)
+        clear_status(self.real_user_id)
 
 
 class Message(MessageMixin):

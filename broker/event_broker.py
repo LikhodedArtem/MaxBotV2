@@ -274,11 +274,9 @@ class EventBroker:
 
         handlers = set()
         for key in current_node:
-            if isinstance(key, AllEvents):
-                pass
             if key == "__handlers__":
                 handlers |= current_node[key]
-            else:
+            elif isinstance(current_node[key], dict):
                 handlers |= self.get_remain_handlers(current_node[key])
         return handlers
 

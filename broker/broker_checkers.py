@@ -22,12 +22,9 @@ async def reg_checker(queries: list[Query]) -> bool:
         if query.message is not None:
             message = query.message
 
-            sender_id = message.sender.user_id
-            recipient_id = message.recipient.user_id
-
             async with db_helper.session_factory() as session:
                 user = await get_user_by_max_id(
-                    session, sender_id if sender_id != bot_info.my_id else recipient_id
+                    session, message.real_user_id
                 )
 
             if user is None:

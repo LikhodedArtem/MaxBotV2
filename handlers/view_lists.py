@@ -18,12 +18,8 @@ from .main_functions import view_list
 
 @broker.check(Event.MESSAGE_COMMAND("lists_view"))
 async def view_lists(message: Message, page: int = 1, edit: bool = False):
-    print("===page", page)
-
-    user_id = message.sender.user_id if message.sender.user_id != bot_info.my_id else message.recipient.user_id
-
     async with db_helper.session_factory() as session:
-        mylists = await get_mylists_by_max_id(session, user_id, page)
+        mylists = await get_mylists_by_max_id(session, message.real_user_id, page)
 
     base_text = "🔍Выберите список для просмотра:"
     first = page == 1
