@@ -94,14 +94,14 @@ class Keyboards:
 
     @classmethod
     def lists(
-        cls, lists_info: list[tuple[str, UUID], ...] | list, first: bool = True, final: bool = False
+        cls, page: int, lists_info: list[tuple[str, UUID], ...] | list, first: bool = True, final: bool = False
     ) -> Keyboard:
         p = PayloadStart(type="lists", action="view")
 
         keyboard = []
 
         for index, info in enumerate(lists_info):
-            btn = CallbackButton.create(f"{index + 1}. {info[0]}", p.add(uuid=info[1], inner="list"))
+            btn = CallbackButton.create(f"{index + 1 + 10 * (page - 1)}. {info[0]}", p.add(uuid=info[1], inner="list"))
             keyboard.append([btn])
 
         text1, inner1 = ("⏹️", "nothing") if first else ("◀️", "left")

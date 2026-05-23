@@ -62,13 +62,16 @@ class EventBroker:
     ) -> None | dict:
         current_node = self.go_to_payload_inner(event, action, current_node)
 
-        if current_node is not None:
-            for inner_item in event.payload.inner:
-                if inner_item not in current_node:
-                    if action == "go":
-                        return
-                    current_node[inner_item] = {"__handlers__": set()}
-                current_node = current_node[inner_item]
+        payload = event.payload
+
+        if payload is not None:
+            if current_node is not None:
+                for inner_item in event.payload.inner:
+                    if inner_item not in current_node:
+                        if action == "go":
+                            return
+                        current_node[inner_item] = {"__handlers__": set()}
+                    current_node = current_node[inner_item]
 
         return current_node
 
@@ -131,9 +134,7 @@ class EventBroker:
     def get_remain_status_handlers(self, event: AllEvents, current_node: dict) -> set[Handler]:
         handlers = self.get_handlers_from_event(event, current_node)
         for key in current_node:
-            if isinstance(key, AllEvents):
-                pass
-            else:
+            if isinstance(current_node[key], dict):
                 handlers |= self.get_remain_status_handlers(event, current_node[key])
         return handlers
 
