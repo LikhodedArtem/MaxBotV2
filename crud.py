@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
 from typing import Literal
@@ -29,6 +30,7 @@ async def create_user(session: AsyncSession, user_data: dict) -> User | None:
 async def create_mylist(session: AsyncSession, user_id: int) -> MyList | None:
     try:
         mylist = MyList(user_id=user_id)
+        mylist.create_time = datetime.now(timezone(timedelta(hours=3))).replace(microsecond=0)
         session.add(mylist)
         await session.commit()
         await session.refresh(mylist)

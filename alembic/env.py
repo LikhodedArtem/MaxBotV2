@@ -24,6 +24,10 @@ if config.config_file_name is not None:
 from core.config import settings
 from core.models.base import Base
 
+from core.models.mylist import MyList
+from core.models.user import User
+from core.models.mylist_value import MyListValue
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

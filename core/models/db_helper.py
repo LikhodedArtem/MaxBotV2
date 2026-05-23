@@ -1,5 +1,5 @@
 from asyncio import current_task
-
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,

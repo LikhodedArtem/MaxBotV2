@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import func, DateTime
+from sqlalchemy import TIMESTAMP, false
 
 from uuid import UUID, uuid4
 
@@ -21,7 +22,11 @@ class MyList(Base, UserRelationMixin):
     description: Mapped[str | None] = mapped_column(nullable=True)
     type: Mapped[str | None] = mapped_column(nullable=True)
     create_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        TIMESTAMP(timezone=False), nullable=False, default=lambda: datetime.now(ZoneInfo("Europe/Moscow"))
+    )
+    deleted: Mapped[bool] = mapped_column(default=False, server_default=false(), nullable=False)
+    delete_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False), nullable=True
     )
 
     values: Mapped[list[MyListValue]] = relationship(
