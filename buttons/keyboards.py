@@ -28,8 +28,9 @@ class Keyboards:
         btn5 = CallbackButton.create(
             "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
         )
+        btn6 = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
 
-        keyboard = [[btn1, btn2], [btn3, btn4], [btn5]]
+        keyboard = [[btn1, btn2], [btn3, btn4], [btn5, btn6]]
 
         return {"buttons": keyboard}
 

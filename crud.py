@@ -200,26 +200,11 @@ async def delete_mylist_with_values_by_uuid(
 
 
 async def update_made_of_mylist_value(
-    session: AsyncSession, mylist_uuid: UUID, number: int
-) -> bool:
-    subquery = (
-        select(MyListValue.id)
-        .where(MyListValue.mylist_uuid == mylist_uuid)
-        .order_by(MyListValue.id)
-        .limit(1)
-        .offset(number - 1)
-    )
-
-    result = await session.execute(subquery)
-    target_id = result.scalar()
-
-    if target_id is None:
-        print(f"NOT FOUND mylist_value with number={number} uuid={mylist_uuid}")
-        return False
-
+    session: AsyncSession, mylist_uuid: UUID, value_id: int
+) -> None:
     stmt = (
         update(MyListValue)
-        .where(MyListValue.id == target_id)
+        .where(MyListValue.id == value_id)
         .values(made=~MyListValue.made)
     )
 
@@ -227,4 +212,19 @@ async def update_made_of_mylist_value(
 
     await session.commit()
 
-    return True
+
+async def get_mylist_value_id_by_number(session: AsyncSession, mylist_uuid: UUID, number: int) -> int| None:
+    stmt = (
+        select(MyListValue.id)
+        .where(MyListValue.mylist_uuid == mylist_uuid)
+        .order_by(MyListValue.id)
+        .limit(1)
+        .offset(number)
+    )
+
+    result = await session.execute(stmt)
+    target_id = result.scalar()
+
+    if target_id is None:
+        return None
+    return target_id

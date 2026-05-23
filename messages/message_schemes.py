@@ -218,8 +218,83 @@ class Callback(BaseModel):
         await callback_answer(self.callback_id, message_data, notification)
 
 
-class Sender(BaseModel):
+class UserMixin(BaseModel):
     user_id: int
+
+
+    @property
+    def my_status(self) -> Status | None:
+        return get_status(self.user_id)
+
+    async def answer(
+            self,
+            text: str,
+            type: Literal[
+                "base_text",
+                "video",
+                "audio",
+                "file",
+                "sticker",
+                "contact",
+                "inline_keyboard",
+                "location",
+            ] = "base_text",
+            link: Optional[str] = None,
+            payload: Optional[dict[str, Any]] = None,
+            notify: Optional[bool] = True,
+            format: Literal["html", "markdown"] = "html",
+            latitude: Optional[float] = None,
+            longitude: Optional[float] = None,
+    ) -> Message:
+        message_data = create_message(
+            text, type, link, payload, notify, format, latitude, longitude
+        )
+
+        response = await send_message(message_data, user_id=self.user_id)
+        message = response.json()["message"]
+        message = Message(**message)
+        return message
+
+    async def status(
+            self,
+            status: Optional[Status] = None,
+            name: Optional[str] = None,
+            payload: Optional[Payload] = None,
+            is_background: Optional[bool] = None,
+            send_callback: Optional[bool] = None,
+    ) -> None:
+        if status is None and name is None and payload is None:
+            ValueError("Должно быть передано что-либо из: status, name, payload")
+
+        if status is not None and (
+                name is not None
+                or payload is not None
+                or is_background is not None
+                or send_callback is not None
+        ):
+            ValueError("Должно быть передано или status, или иные атрибуты")
+
+        if status is None:
+            from status.status_functions import create_status
+
+            payload = payload.model_dump() if payload is not None else {}
+
+            status = create_status(
+                name=name,
+                **payload,
+                is_background=is_background,
+                send_callback=send_callback,
+            )
+
+        set_status(self.user_id, status)
+
+    async def clear_status(self):
+        from status.status_crud import clear_status
+
+        clear_status(self.user_id)
+
+
+class Sender(UserMixin):
     first_name: str
     last_name: Optional[str] = None
     is_bot: bool
@@ -227,42 +302,10 @@ class Sender(BaseModel):
     username: Optional[str] = None
     name: Optional[str] = None
 
-    async def answer(
-        self,
-        text: Optional[str] = None,
-        type: Literal[
-            "base_text",
-            "video",
-            "audio",
-            "file",
-            "sticker",
-            "contact",
-            "inline_keyboard",
-            "location",
-        ] = "base_text",
-        link: Optional[str] = None,
-        payload: Optional[dict[str, Any]] = None,
-        notify: Optional[bool] = True,
-        format: Literal["html", "markdown"] = "html",
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-    ) -> None:
-        message_data = create_message(
-            text, type, link, payload, notify, format, latitude, longitude
-        )
 
-        print(message_data)
-
-        response = await send_message(message_data, user_id=self.user_id)
-        message = response.json()["message"]
-        message = Message(**message)
-        return message
-
-
-class Recipient(BaseModel):
+class Recipient(UserMixin):
     chat_id: int
     chat_type: str
-    user_id: int
 
 
 class Body(BaseModel):

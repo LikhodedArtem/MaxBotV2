@@ -1,13 +1,11 @@
 __all__ = ["help", "view_list"]
 
-from typing import Literal
 from uuid import UUID
 
 from broker import broker
 from broker.event import Event
 from buttons.keyboards import Keyboards
 from core.global_names import GN
-from core.models import mylist
 from core.models.db_helper import db_helper
 from handlers.checkers import list_checker
 from crud import (
@@ -19,7 +17,8 @@ from crud import (
     delete_mylist_with_values_by_uuid,
     create_mylist_value,
     delete_mylist_value_by_id,
-    update_mylist_value_value_by_id,
+    update_mylist_value_value_by_id, update_made_of_mylist_value,
+    get_mylist_value_id_by_number
 )
 
 from messages.message_schemes import Message, ContactMessage, Sender
@@ -27,21 +26,20 @@ from status.status_functions import create_status
 from handlers.help_functions import *
 
 
-@broker.check(Event.BOT_STARTED)
-async def bot_started(sender: Sender):
-    await sender.answer(GN.help_text)
+@broker.check([Event.BOT_STARTED, Event.MESSAGE_COMMAND("reg")])
+async def reg_get(sender: Sender):
+    async with db_helper.session_factory() as session:
+        if await get_user_by_max_id(session, sender.user_id) is None:
+            await sender.answer(
+                "📞Для продолжения работы, необходим ваш номер телефона",
+                "inline_keyboard",
+                payload=Keyboards.reg(),
+            )
 
-
-@broker.check(Event.MESSAGE_COMMAND("reg"))
-async def reg_get(message: Message):
-    await message.answer(
-        "📞Для продолжения работы, необходим ваш номер телефона",
-        "inline_keyboard",
-        payload=Keyboards.reg(),
-    )
-
-    status = create_status(type="bot", action="reg")
-    await message.status(status)
+            status = create_status(type="bot", action="reg")
+            await sender.status(status)
+        else:
+            await sender.answer(GN.help_text)
 
 
 @broker.check(Event.STATUS_CALLBACK(payload={"type": "bot", "action": "reg"}))
@@ -94,7 +92,7 @@ async def new_list(message: Message) -> None:
 
 
 async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) -> None:
-    status = create_status(name="List-View", send_callback=False)
+    status = create_status(type="list", action="view", uuid=payload_uuid, send_callback=False)
     await message.status(status)
 
     async with db_helper.session_factory() as session:
@@ -138,7 +136,7 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) ->
         payload={"type": "list", "action": "change", "inner": "field"}
     ),
     checkers=list_checker,
-    allowed="List-View",
+    allowed=GN.list_view,
 )
 async def list_field_get(
     message: Message, payload_uuid: UUID, payload_inner: tuple[str]
@@ -187,7 +185,7 @@ async def list_field_set(
         payload={"type": "list", "action": "delete", "inner": "start"}
     ),
     checkers=list_checker,
-    allowed="List-View",
+    allowed=GN.list_view,
 )
 async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.answer(
@@ -253,15 +251,22 @@ async def cancel_delete(message: Message) -> None:
     await message.clear_status()
 
 
+@broker.check(Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": "escape"}), allowed=GN.list_view)
+async def change_escape(message: Message) -> None:
+    await message.clear_status()
+
+    await help(message=message)
+
+
 @broker.check(
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "change", "inner": ("values", "start")}
     ),
     checkers=list_checker,
-    allowed="List-View",
+    allowed=GN.list_view,
 )
 async def view_values(message: Message, payload_uuid: UUID) -> None:
-    status = create_status(name="Values-View", send_callback=False)
+    status = create_status(type="list", uuid=payload_uuid, action="view", inner="values", send_callback=False)
     await message.status(status, send_callback=False)
 
     async with db_helper.session_factory() as session:
@@ -283,7 +288,7 @@ async def view_values(message: Message, payload_uuid: UUID) -> None:
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "change", "inner": ("values", "add", "get")}
     ),
-    allowed="Values-View",
+    allowed=GN.values_view,
     checkers=list_checker,
 )
 async def add_value_get(message: Message, payload_uuid: UUID) -> None:
@@ -299,7 +304,7 @@ async def add_value_get(message: Message, payload_uuid: UUID) -> None:
     Event.STATUS_CALLBACK(
         payload={"type": "list", "action": "change", "inner": ("values", "add", "set")}
     ),
-    allowed="Values-View",
+    allowed=GN.values_view,
     checkers=list_checker,
 )
 async def add_value_set(message: Message, payload_uuid: UUID) -> None:
@@ -321,7 +326,7 @@ async def add_value_set(message: Message, payload_uuid: UUID) -> None:
             "inner": ("values", "delete", "get"),
         }
     ),
-    allowed="Values-View",
+    allowed=GN.values_view,
     checkers=list_checker,
 )
 async def delete_value_get(message: Message, payload_uuid: UUID) -> None:
@@ -344,13 +349,13 @@ async def delete_value_get(message: Message, payload_uuid: UUID) -> None:
             "inner": ("values", "delete", "set"),
         }
     ),
-    allowed="Values-View",
+    allowed=GN.values_view,
     checkers=list_checker,
 )
 async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
     text_id = message.body.text
     try:
-        value_id = await get_mylist_value_id_by_number(payload_uuid, text_id)
+        value_id = await format_get_mylist_value_id_by_number(payload_uuid, text_id)
 
         if value_id is None:
             raise ValueError
@@ -375,7 +380,7 @@ async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
             "inner": ("values", "change", "get_id"),
         }
     ),
-    allowed="Values-View",
+    allowed=GN.values_view,
     checkers=list_checker,
 )
 async def change_value_get_id(message: Message, payload_uuid: UUID) -> None:
@@ -402,7 +407,7 @@ async def change_value_get_id(message: Message, payload_uuid: UUID) -> None:
 async def change_value_get_value(message: Message, payload_uuid: UUID) -> None:
     text_id = message.body.text
     try:
-        value_id = await get_mylist_value_id_by_number(payload_uuid, text_id)
+        value_id = await format_get_mylist_value_id_by_number(payload_uuid, text_id)
 
         if value_id is None:
             raise ValueError
@@ -453,10 +458,29 @@ async def change_value_set(
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "change", "inner": ("values", "escape")}
     ),
-    allowed="Values-View",
+    allowed=GN.values_view,
     checkers=list_checker,
 )
 async def change_value_escape(message: Message, payload_uuid: UUID) -> None:
     await message.clear_status()
 
     await view_list(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(Event.MESSAGE_COMMAND, allowed=[GN.list_view, GN.values_view], without_allowed=False)
+async def mark_value(message: Message, payload_uuid: UUID, payload_inner: tuple[str]) -> None:
+    text = message.body.text
+    if not len(text) > 1: return
+    text_id = "".join(list(text)[1:])
+    if not text_id.isdigit(): return
+
+    value_id = await format_get_mylist_value_id_by_number(payload_uuid, text_id)
+    if value_id is None: return
+
+    async with db_helper.session_factory() as session:
+        await update_made_of_mylist_value(session, payload_uuid, value_id)
+
+    if "values" in payload_inner:
+        await view_values(message=message, payload_uuid=payload_uuid)
+    else:
+        await view_list(message=message, payload_uuid=payload_uuid)

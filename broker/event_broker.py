@@ -282,6 +282,7 @@ class EventBroker:
             | dict[str, str]
             | list[dict[str, str] | str | list[str]]
         ] = None,
+        without_allowed: bool = True,
         checkers: Optional[list[Predicate] | Predicate] = None,
     ) -> Callable[[Handler], Handler]:
         """Многофункциональный декоратор, который является главной возможностью взаимодействовать
@@ -290,6 +291,7 @@ class EventBroker:
         Args:
             on_events: Событие или список событий, на которые будет подписана функция
             allowed: Статус или список статусов
+            without_allowed: Подписывать ли handler на те же события без статусов, что и со статусами
             checkers: Функция или список функций. Если не все функции вернули True, то функция подписчик выполняться не будет
         """
 
@@ -336,13 +338,13 @@ class EventBroker:
                 else:
                     allowed_statuses = allowed
 
-                if isinstance(allowed[0], Status):
+                if isinstance(allowed_statuses[0], Status):
                     allowed_statuses = set(allowed_statuses)
-                elif isinstance(allowed[0], dict):
+                elif isinstance(allowed_statuses[0], dict):
                     allowed_statuses = set(
                         map(lambda x: Status(payload=Payload(**x)), allowed_statuses)
                     )
-                elif isinstance(allowed[0], str):
+                elif isinstance(allowed_statuses[0], str):
                     allowed_statuses = set(
                         map(lambda x: Status(name=x), allowed_statuses)
                     )
@@ -361,8 +363,9 @@ class EventBroker:
                     for status in allowed_statuses:
                         for event in events:
                             self.subscribe_on_event_with_status(event, wrapper, status)
-                for event in events:
-                    self.subscribe_on_event(event, wrapper)
+                if without_allowed:
+                    for event in events:
+                        self.subscribe_on_event(event, wrapper)
 
             return wrapper
 

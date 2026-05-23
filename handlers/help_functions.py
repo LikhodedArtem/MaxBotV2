@@ -1,4 +1,4 @@
-__all__ = ["mylist_values_to_form", "get_mylist_value_id_by_number"]
+__all__ = ["mylist_values_to_form", "format_get_mylist_value_id_by_number"]
 
 from uuid import UUID
 
@@ -6,7 +6,7 @@ from core.models.db_helper import db_helper
 from core.models.mylist_value import MyListValue
 from sqlalchemy.orm import Mapped
 
-from crud import get_mylist_with_values_by_uuid
+from crud import get_mylist_value_id_by_number
 
 
 def mylist_values_to_form(
@@ -22,23 +22,20 @@ def mylist_values_to_form(
             # if value.made: не реализованно
             #     continue
             if value.made:
-                cod1, cod2 = "<strike>", "</strike>"
+                cod1, cod2 = "<del>", "</del>"
 
             values_text += f"  /{i + 1}  {cod1} {value.value} {cod2}\n"
+
+    print(values_text)
+
     return values_text
 
 
-async def get_mylist_value_id_by_number(obj_uuid: UUID, text_id: str) -> int | None:
+async def format_get_mylist_value_id_by_number(obj_uuid: UUID, text_id: str) -> int | None:
     if not text_id.isdigit():
         return None
 
     index = int(text_id) - 1
 
     async with db_helper.session_factory() as session:
-        mylist = await get_mylist_with_values_by_uuid(session, obj_uuid)
-        values = mylist.values
-
-        if index < 0 or len(values) <= index:
-            return None
-
-        return values[index].id
+        return await get_mylist_value_id_by_number(session, obj_uuid, index)
