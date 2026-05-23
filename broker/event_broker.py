@@ -311,6 +311,7 @@ class EventBroker:
         ] = None,
         without_allowed: bool = True,
         checkers: Optional[list[Predicate] | Predicate] = None,
+        checkers_kwargs: Optional[dict | list[dict]] = None,
         can_be_none: bool = False,
     ) -> Callable[[Handler], Handler]:
         """Многофункциональный декоратор, который является главной возможностью взаимодействовать
@@ -321,28 +322,41 @@ class EventBroker:
             allowed: Статус или список статусов
             without_allowed: Подписывать ли handler на те же события без статусов, что и со статусами
             checkers: Функция или список функций. Если не все функции вернули True, то функция подписчик выполняться не будет
+            checkers_kwargs: kwargs передаваемые в checkers
             can_be_none: Из query в handler передаются различные ключи. Этот атрибут определяет, вызывать ли ошибку, если атрибут пуст
         """
 
         def decorator(handler: Handler) -> Handler:
             if checkers is None:
                 function_list = []
-            elif not isinstance(checkers, list):
+            if not isinstance(checkers, list):
                 function_list = [checkers]
             else:
                 function_list = checkers
+
+            if checkers_kwargs is None:
+                kwargs_list = []
+            elif not isinstance(checkers, list):
+                kwargs_list = [checkers_kwargs]
+            else:
+                kwargs_list = checkers_kwargs
+
+            if checkers_kwargs is not None:
+                if len(function_list) != len(kwargs_list):
+                    raise ValueError("Неправильно переданы checkers или checkers_kwargs в check")
 
             @wraps(handler)
             async def wrapper(query: Optional[Query] = None, **kwargs) -> None:
                 try:
                     if query is not None:
                         if checkers is not None:
-                            for function in function_list:
+                            for i, function in enumerate(function_list):
                                 predicate_kwargs = self._build_handler_kwargs(
-                                    function, query
+                                    function, query, True
                                 )
-                                allowed = await function(**predicate_kwargs)
-                                if not allowed:
+                                if checkers_kwargs is not None:
+                                    predicate_kwargs |= kwargs_list[i]
+                                if not await function(**predicate_kwargs):
                                     return
 
                         handler_kwargs = self._build_handler_kwargs(handler, query, can_be_none)

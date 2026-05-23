@@ -7,7 +7,7 @@ from core.config import bot_info
 from core.global_names import GN
 from core.models.db_helper import db_helper
 from handlers.checkers import list_checker
-from crud import get_mylists_by_max_id
+from crud import get_mylists_by_max_id, delete_deleted_mylists_by_max_id
 
 from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
@@ -17,18 +17,18 @@ from .main_functions import view_list, help
 
 
 @broker.check(Event.MESSAGE_COMMAND("lists_view"))
-async def view_lists(message: Message, page: int = 1, edit: bool = False):
+async def view_lists(message: Message, page: int = 1, edit: bool = False, deleted: bool = False):
     if page < 1:
         return
 
     async with db_helper.session_factory() as session:
-        mylists = await get_mylists_by_max_id(session, message.real_user_id, page)
+        mylists = await get_mylists_by_max_id(session, message.real_user_id, page, deleted)
 
-    base_text = "🔍Выберите список для просмотра:"
+    base_text = "🔍Выберите список для просмотра:" if not deleted else "🗑Выберите удалённый список для просмотра"
     first = page == 1
 
     if mylists is None:
-        text = "❌У вас нет ни одного списка."
+        text = "❌У вас нет ни одного списка. /new_list" if not deleted else "❌Корзина пуста"
         if not edit:
             await message.answer(
                 text,
@@ -50,15 +50,14 @@ async def view_lists(message: Message, page: int = 1, edit: bool = False):
             await message.answer(
                 base_text,
                 "inline_keyboard",
-                payload=Keyboards.lists(page, mylist_info, first=first, final=final),
+                payload=Keyboards.lists(page, mylist_info, first=first, final=final, deleted=deleted),
             )
         else:
             await message.edit(
                 base_text,
                 "inline_keyboard",
-                payload=Keyboards.lists(page, mylist_info, first=first, final=final),
+                payload=Keyboards.lists(page, mylist_info, first=first, final=final, deleted=deleted),
             )
-
     status = create_status(type="lists", action="view", inner=f"{page}")
     await message.status(status)
 
@@ -105,3 +104,51 @@ async def view_lists_escape(message: Message):
     await message.clear_status()
 
     await help(message=message)
+
+
+@broker.check(Event.MESSAGE_COMMAND("bin"))
+async def bin(message: Message):
+    await view_lists(message=message, deleted=True)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "lists", "action": "view", "inner": "clear"}
+    ),
+    allowed={"type": "lists", "action": "view"}
+)
+async def bin_clear(message: Message):
+    await message.clear_status()
+    await message.status(name="Clear-Bin")
+
+    await message.answer("Вы уверены, что хотите <b>очистить</b> корзину?", "inline_keyboard", payload=Keyboards.yes_no(type="lists", action="view", inner="clear"))
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "lists", "action": "view", "inner": ("clear", "yes")}
+    ),
+    allowed="Clear-Bin",
+)
+async def bin_clear_yes(message: Message):
+    await message.clear_status()
+
+    async with db_helper.session_factory() as session:
+        await delete_deleted_mylists_by_max_id(session, message.real_user_id)
+
+    await message.answer("✅Корзина очищена")
+
+    await help(message=message)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "lists", "action": "view", "inner": ("clear", "no")}
+    ),
+    allowed="Clear-Bin",
+)
+async def bin_clear_no(message: Message):
+    await message.clear_status()
+    await message.delete()
+
+    await bin(message=message)

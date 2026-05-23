@@ -2,6 +2,7 @@ from __future__ import annotations
 
 __all__ = ["Keyboard", "Keyboards"]
 
+from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Mapped
@@ -46,8 +47,8 @@ class Keyboards:
     def yes_no(
         cls,
         type: str,
-        payload_uuid: UUID,
         action: str,
+        payload_uuid: Optional[UUID] = None,
         inner: str | tuple[str] | None = None,
     ) -> Keyboard:
         p = PayloadStart(type=type, uuid=payload_uuid, action=action, inner=inner)
@@ -94,7 +95,7 @@ class Keyboards:
 
     @classmethod
     def lists(
-        cls, page: int, lists_info: list[tuple[str, UUID], ...] | list, first: bool = True, final: bool = False
+        cls, page: int, lists_info: list[tuple[str, UUID], ...] | list, first: bool = True, final: bool = False, deleted: bool = False
     ) -> Keyboard:
         p = PayloadStart(type="lists", action="view")
 
@@ -107,10 +108,15 @@ class Keyboards:
         text1, inner1 = ("❌", "nothing") if first else ("⬅️Назад", "left")
         text2, inner2 = ("❌", "nothing") if final else ("Дальше➡️", "right")
 
-        btn1 = CallbackButton.create(text1, p.add(inner=inner1))
-        btn2 = CallbackButton.create(text2, p.add(inner=inner2))
+        if not (first and final):
+            btn1 = CallbackButton.create(text1, p.add(inner=inner1))
+            btn2 = CallbackButton.create(text2, p.add(inner=inner2))
 
-        keyboard.append([btn1, btn2])
+            keyboard.append([btn1, btn2])
+
+        if deleted:
+            delete_btn = CallbackButton.create("🧹Очистить корзину", p.add(inner="clear"))
+            keyboard.append([delete_btn])
 
         escape_btn = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
         keyboard.append([escape_btn])

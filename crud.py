@@ -202,7 +202,7 @@ async def delete_mylist_with_values_by_uuid(
 
 
 async def update_made_of_mylist_value(
-    session: AsyncSession, mylist_uuid: UUID, value_id: int
+    session: AsyncSession, value_id: int
 ) -> None:
     stmt = (
         update(MyListValue)
@@ -235,11 +235,12 @@ async def get_mylist_value_id_by_number(
 
 
 async def get_mylists_by_max_id(
-    session: AsyncSession, max_id: int, page: int = 1
+    session: AsyncSession, max_id: int, page: int = 1, deleted: bool = False
 ) -> list[MyList] | None:
     stmt = (
         select(MyList)
         .where(MyList.user_id == max_id)
+        .where(MyList.deleted == deleted)
         .order_by(MyList.id)
         .limit(11)
         .offset((page - 1) * 10)
@@ -249,3 +250,33 @@ async def get_mylists_by_max_id(
     mylists = result.scalars().all() or None
 
     return mylists
+
+
+async def update_delete_to_mylist_by_uuid(
+    session: AsyncSession, mylist_uuid: UUID
+) -> None:
+    dtime = datetime.now(timezone(timedelta(hours=3))).replace(microsecond=0)
+    stmt = (
+        update(MyList)
+        .where(MyList.uuid == mylist_uuid)
+        .values(
+            deleted=True,
+            delete_time=dtime,
+        )
+    )
+
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def delete_deleted_mylists_by_max_id(
+    session: AsyncSession, max_id: int
+) -> None:
+    stmt = (
+        delete(MyList)
+        .where(MyList.user_id == max_id)
+        .where(MyList.deleted == True)
+    )
+
+    await session.execute(stmt)
+    await session.commit()

@@ -18,7 +18,7 @@ from crud import (
     delete_mylist_value_by_id,
     update_mylist_value_value_by_id,
     update_made_of_mylist_value,
-    get_mylist_value_id_by_number,
+    get_mylist_value_id_by_number, update_delete_to_mylist_by_uuid,
 )
 
 from messages.message_schemes import Message, ContactMessage, Sender
@@ -95,11 +95,6 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
     if is_from_lists and page is None or page is not None and not is_from_lists:
         raise ValueError("Было передан или только page или только is_from_lists. Должно быть передано либо ничего из этого, либо оба сразу")
 
-    status = create_status(
-        type="list", action="view", uuid=payload_uuid, send_callback=False, inner=("from_lists", f"{page}") if is_from_lists else None
-    )
-    await message.status(status)
-
     async with db_helper.session_factory() as session:
         mylist = await get_mylist_with_values_by_uuid(session, payload_uuid)
 
@@ -117,13 +112,23 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
 
     mylist_values = mylist_values_to_form(mylist.values)
 
+    if mylist.deleted:
+        emoji = "🗑"
+        deleted = "<b>удалённого</b> "
+        delete_time = f"<b>Дата удаления</b>: {mylist.create_time}\n"
+    else:
+        emoji = "⚙️"
+        deleted = ""
+        delete_time = ""
+
     text = (
-        f"⚙️Настройки вашего списка:\n\n"
+        f"{emoji}Настройки вашего {deleted}списка:\n\n"
         f"<b>Тип</b>: {mylist_type}\n"
         f"<b>Название</b>: {mylist_title}\n"
         f"<b>Описание</b>: {mylist_description}\n\n"
         f"<b>Содержание</b>:\n{mylist_values}\n"
-        f"<b>Дата создания</b>: {mylist.create_time}\n\n"
+        f"<b>Дата создания</b>: {mylist.create_time}\n"
+        f"{delete_time}\n"
     )
 
     if not edit:
@@ -134,6 +139,16 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
         await message.edit(
             text, "inline_keyboard", payload=Keyboards.change_list(mylist.uuid)
         )
+
+    delete_inner = ("deleted",) if mylist.deleted else tuple()
+    from_inner = ("from_lists", f"{page}") if is_from_lists else tuple()
+    inner = delete_inner + from_inner
+    if len(inner) == 0: inner = None
+
+    status = create_status(
+        type="list", action="view", uuid=payload_uuid, send_callback=False, inner=inner
+    )
+    await message.status(status)
 
 
 @broker.check(
@@ -232,9 +247,9 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
 
     async with db_helper.session_factory() as session:
-        await delete_mylist_with_values_by_uuid(session, payload_uuid)
+        await update_delete_to_mylist_by_uuid(session, payload_uuid)
 
-    await message.answer("✅Список безвозвратно удалён")
+    await message.answer("✅Список удалён и перемещён в корзину. /bin")
 
     await message.clear_status()
 
@@ -253,9 +268,12 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
     "List-Delete",
     checkers=list_checker,
 )
-async def cancel_delete(message: Message) -> None:
+async def cancel_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
     await message.clear_status()
+
+    status = create_status(type="list", action="view", uuid=payload_uuid)
+    await message.status(status)
 
 
 @broker.check(
@@ -268,7 +286,7 @@ async def cancel_delete(message: Message) -> None:
 async def list_view_escape(message: Message, status_inner: tuple[str] | None) -> None:
     await message.clear_status()
 
-    if status_inner is not None and len(status_inner) > 0 and status_inner[0] == "from_lists":
+    if status_inner is not None and len(status_inner) > 0 and "from_lists" in status_inner:
         page = int(status_inner[-1])
 
         from .view_lists import view_lists
@@ -510,7 +528,7 @@ async def mark_value(
         return
 
     async with db_helper.session_factory() as session:
-        await update_made_of_mylist_value(session, payload_uuid, value_id)
+        await update_made_of_mylist_value(session, value_id)
 
     if "values" in payload_inner:
         await view_values(message=message, payload_uuid=payload_uuid)
