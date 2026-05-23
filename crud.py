@@ -239,7 +239,7 @@ async def get_mylists_by_max_id(
         select(MyList)
         .where(MyList.user_id == max_id)
         .order_by(MyList.id)
-        .limit(10)
+        .limit(11)
         .offset((page - 1) * 10)
     )
 

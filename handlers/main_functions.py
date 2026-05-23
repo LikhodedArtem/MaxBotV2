@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from broker import broker
@@ -90,9 +91,12 @@ async def new_list(message: Message) -> None:
     await view_list(message, mylist.uuid)
 
 
-async def view_list(message: Message, payload_uuid: UUID, edit: bool = False) -> None:
+async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is_from_lists: bool = False, page: Optional[int] = None) -> None:
+    if is_from_lists and page is None or page is not None and not is_from_lists:
+        raise ValueError("Было передан или только page или только is_from_lists. Должно быть передано либо ничего из этого, либо оба сразу")
+
     status = create_status(
-        type="list", action="view", uuid=payload_uuid, send_callback=False
+        type="list", action="view", uuid=payload_uuid, send_callback=False, inner=("from_lists", f"{page}") if is_from_lists else None
     )
     await message.status(status)
 
@@ -234,6 +238,8 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
 
     await message.clear_status()
 
+    await help(message=message)
+
 
 @broker.check(
     [
@@ -257,11 +263,18 @@ async def cancel_delete(message: Message) -> None:
         payload={"type": "list", "action": "change", "inner": "escape"}
     ),
     allowed=GN.list_view,
+    can_be_none=True
 )
-async def change_escape(message: Message) -> None:
+async def list_view_escape(message: Message, status_inner: tuple[str] | None) -> None:
     await message.clear_status()
 
-    await help(message=message)
+    if status_inner is not None and len(status_inner) > 0 and status_inner[0] == "from_lists":
+        page = int(status_inner[-1])
+
+        from .view_lists import view_lists
+        await view_lists(message=message, page=page)
+    else:
+        await help(message=message)
 
 
 @broker.check(

@@ -28,7 +28,7 @@ class Keyboards:
         btn5 = CallbackButton.create(
             "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
         )
-        btn6 = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
+        btn6 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
 
         keyboard = [[btn1, btn2], [btn3, btn4], [btn5, btn6]]
 
@@ -70,7 +70,7 @@ class Keyboards:
         btn1 = CallbackButton.create("➕Добавить", p.add(inner=("add", "get")))
         btn2 = CallbackButton.create("🗑Удалить", p.add(inner=("delete", "get")))
         btn3 = CallbackButton.create("✏️Изменить", p.add(inner=("change", "get_id")))
-        btn4 = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
+        btn4 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
 
         keyboard = [[btn1, btn2], [btn3, btn4]]
 
@@ -86,7 +86,7 @@ class Keyboards:
             "✏️Изменить", p.add(inner=("change", f"{value_id}"))
         )
         btn2 = CallbackButton.create("🗑Удалить", p.add(inner=("delete", f"{value_id}")))
-        btn3 = CallbackButton.create("➡️Вернуться", p.add(inner=("escape", came_from)))
+        btn3 = CallbackButton.create("Вернуться⬆️", p.add(inner=("escape", came_from)))
 
         keyboard = [[btn1, btn2], [btn3]]
 
@@ -104,15 +104,15 @@ class Keyboards:
             btn = CallbackButton.create(f"{index + 1 + 10 * (page - 1)}. {info[0]}", p.add(uuid=info[1], inner="list"))
             keyboard.append([btn])
 
-        text1, inner1 = ("⏹️", "nothing") if first else ("◀️", "left")
-        text2, inner2 = ("⏹️", "nothing") if final else ("▶️", "right")
+        text1, inner1 = ("❌", "nothing") if first else ("⬅️Назад", "left")
+        text2, inner2 = ("❌", "nothing") if final else ("Дальше➡️", "right")
 
         btn1 = CallbackButton.create(text1, p.add(inner=inner1))
         btn2 = CallbackButton.create(text2, p.add(inner=inner2))
 
         keyboard.append([btn1, btn2])
 
-        escape_btn = CallbackButton.create("➡️Вернуться", p.add(inner="escape"))
+        escape_btn = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
         keyboard.append([escape_btn])
 
         return {"buttons": keyboard}

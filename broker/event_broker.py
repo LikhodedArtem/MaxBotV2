@@ -122,12 +122,13 @@ class EventBroker:
             if current_node is None:
                 return handlers
 
-            for inner_item in status.payload.inner:
-                handlers |= self.get_handlers_from_event(event, current_node)
+            if status.payload is not None:
+                for inner_item in status.payload.inner:
+                    handlers |= self.get_handlers_from_event(event, current_node)
 
-                if inner_item not in current_node:
-                    return handlers
-                current_node = current_node[inner_item]
+                    if inner_item not in current_node:
+                        return handlers
+                    current_node = current_node[inner_item]
 
             return self.get_remain_status_handlers(event, current_node)
 
@@ -310,6 +311,7 @@ class EventBroker:
         ] = None,
         without_allowed: bool = True,
         checkers: Optional[list[Predicate] | Predicate] = None,
+        can_be_none: bool = False,
     ) -> Callable[[Handler], Handler]:
         """Многофункциональный декоратор, который является главной возможностью взаимодействовать
         с брокером событий.
@@ -319,6 +321,7 @@ class EventBroker:
             allowed: Статус или список статусов
             without_allowed: Подписывать ли handler на те же события без статусов, что и со статусами
             checkers: Функция или список функций. Если не все функции вернули True, то функция подписчик выполняться не будет
+            can_be_none: Из query в handler передаются различные ключи. Этот атрибут определяет, вызывать ли ошибку, если атрибут пуст
         """
 
         def decorator(handler: Handler) -> Handler:
@@ -342,7 +345,7 @@ class EventBroker:
                                 if not allowed:
                                     return
 
-                        handler_kwargs = self._build_handler_kwargs(handler, query)
+                        handler_kwargs = self._build_handler_kwargs(handler, query, can_be_none)
                         await handler(**handler_kwargs)
 
                     else:

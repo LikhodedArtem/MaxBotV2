@@ -13,11 +13,14 @@ from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
 from handlers.help_functions import *
 
-from .main_functions import view_list
+from .main_functions import view_list, help
 
 
 @broker.check(Event.MESSAGE_COMMAND("lists_view"))
 async def view_lists(message: Message, page: int = 1, edit: bool = False):
+    if page < 1:
+        return
+
     async with db_helper.session_factory() as session:
         mylists = await get_mylists_by_max_id(session, message.real_user_id, page)
 
@@ -25,7 +28,7 @@ async def view_lists(message: Message, page: int = 1, edit: bool = False):
     first = page == 1
 
     if mylists is None:
-        text = "❌У вас нет ни одного списка." if first else base_text
+        text = "❌У вас нет ни одного списка."
         if not edit:
             await message.answer(
                 text,
@@ -39,8 +42,8 @@ async def view_lists(message: Message, page: int = 1, edit: bool = False):
                 payload=Keyboards.lists(page, [], first=first, final=True),
             )
     else:
-        info = [[mylist.title, mylist.uuid] for mylist in mylists]
-        final = len(info) != 10
+        final = True if len(mylists) != 11 else False
+        info = [[mylist.title, mylist.uuid] for i, mylist in enumerate(mylists) if i != 10]
         mylist_info = format_lists_info(info)
 
         if not edit:
@@ -88,5 +91,17 @@ async def view_lists_right(message: Message, status_inner: tuple[str]):
     ),
     allowed={"type": "lists", "action": "view"}
 )
-async def view_lists_view_list(message: Message, payload_uuid: UUID):
-    await view_list(message, payload_uuid)
+async def view_lists_view_list(message: Message, payload_uuid: UUID, status_inner: tuple[str]):
+    await view_list(message, payload_uuid, is_from_lists=True, page=int(status_inner[-1]))
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+            payload={"type": "lists", "action": "view", "inner": "escape"}
+    ),
+    allowed={"type": "lists", "action": "view"}
+)
+async def view_lists_escape(message: Message):
+    await message.clear_status()
+
+    await help(message=message)
