@@ -23,7 +23,6 @@ async def create_user(session: AsyncSession, user_data: dict) -> User | None:
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    print("user created:", user)
     return user
 
 
@@ -34,11 +33,9 @@ async def create_mylist(session: AsyncSession, user_id: int) -> MyList | None:
         session.add(mylist)
         await session.commit()
         await session.refresh(mylist)
-        print(f"mylist by user {user_id} created:", mylist)
         return mylist
     except:
-        print(f"something went wrong with creating mylist by user {user_id}")
-
+        return None
 
 async def create_mylist_value(
     session: AsyncSession, mylist_uuid: UUID, value: str
@@ -48,10 +45,9 @@ async def create_mylist_value(
         session.add(mylist_value)
         await session.commit()
         await session.refresh(mylist_value)
-        print(f"mylistvalue by mylist {mylist_uuid} created, value:", mylist_value)
         return mylist_value
     except:
-        print(f"something went wrong with creating mylistvalue by mylist {mylist_uuid}")
+        return None
 
 
 async def get_user_id_by_max_id(session: AsyncSession, max_id: int) -> int | None:
@@ -61,10 +57,7 @@ async def get_user_id_by_max_id(session: AsyncSession, max_id: int) -> int | Non
     target_id = result.scalar()
 
     if target_id is None:
-        print(f"NOT FOUND user with max_id={max_id}")
         return None
-
-    print(f"found user.id with max_id={max_id}")
 
     return target_id
 
@@ -75,10 +68,7 @@ async def get_user_by_max_id(session: AsyncSession, max_id: int) -> User | None:
     user = result.scalar_one_or_none()
 
     if user is None:
-        print(f"NOT FOUND user with max_id={max_id}")
         return None
-
-    print("found user:", user.max_id, user)
 
     return user
 
@@ -89,10 +79,7 @@ async def get_mylist_by_uuid(session: AsyncSession, mylist_uuid: UUID) -> MyList
     mylist = result.scalar_one_or_none()
 
     if mylist is None:
-        print(f"NOT FOUND mylist with uuid={mylist_uuid}")
         return None
-
-    print("found mylist:", mylist)
 
     return mylist
 
@@ -111,13 +98,7 @@ async def get_mylist_with_values_by_uuid(
     mylist = result.scalar_one_or_none()
 
     if mylist is None:
-        print(f"NOT FOUND mylist with uuid={mylist_uuid}")
         return None
-
-    print("found mylist:", mylist.user_id, mylist)
-
-    for value in mylist.values:
-        print("*", value)
 
     return mylist
 
@@ -129,14 +110,6 @@ async def get_users_with_mylists_with_values(session: AsyncSession):
         .order_by(User.id)
     )
     users = await session.scalars(stmt)
-
-    for user in users:
-        print("***" * 60)
-        print(user)
-        for mylist in user.mylists:
-            print("-", mylist)
-            for value in mylist.values:
-                print("\t*", value)
 
 
 async def get_mylist_value_by_id(

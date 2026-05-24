@@ -26,8 +26,6 @@ def mylist_values_to_form(
 
             values_text += f"  /{i + 1}  {cod1} {value.value} {cod2}\n"
 
-    print(values_text)
-
     return values_text
 
 

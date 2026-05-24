@@ -1,5 +1,7 @@
 import logging
 
+from sqlalchemy.testing.suite.test_reflection import users
+
 from broker.event import Event
 from broker.event_broker import Query
 from messages.message_schemes import Message, Callback, ContactMessage, Sender
@@ -31,6 +33,8 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
                         message = ContactMessage(**data["message"])
                     except Exception:
                         return []
+
+                print("===my_id===", message.sender.user_id, message.recipient.user_id)
 
                 q1 = Query(event=Event.MESSAGE_CREATED, message=message)
                 q2 = Query(event=Event.MESSAGE_CREATED(text=text), message=message)

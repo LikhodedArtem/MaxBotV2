@@ -81,7 +81,7 @@ async def reg_set(message: ContactMessage):
             raise ValueError(e)
 
     except Exception as e:
-        print(e)
+        print("===reg_error", e)
         await message.answer(
             "❌Что-то пошло не так. Попробуйте заново пройти регистрацию или напишите в техподдержку"
         )
@@ -185,7 +185,6 @@ async def list_field_get(
     status = create_status(
         type="list", uuid=payload_uuid, action="set", inner=("field", field)
     )
-    print("===request_list_field", message)
 
     await message.status(status)
 
@@ -345,8 +344,6 @@ async def view_values(message: Message, payload_uuid: UUID) -> None:
     async with db_helper.session_factory() as session:
         mylist = await get_mylist_with_values_by_uuid(session, payload_uuid)
         values = mylist.values
-
-    print("===values", values)
 
     name = f' "{mylist.title}"' if mylist.title is not None else ""
 

@@ -7,7 +7,6 @@ from broker.event import Event
 
 
 async def reg_checker(queries: list[Query]) -> bool:
-    print()
     for query in queries:
         if (
             query.event == Event.MESSAGE_COMMAND("reg")

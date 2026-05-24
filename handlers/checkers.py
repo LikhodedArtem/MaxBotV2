@@ -14,8 +14,6 @@ async def list_checker(message: Message, payload_uuid: UUID, status_inner: Optio
         await message.answer("❌Работа с этим списком прекращена")
         return False
 
-    print("===list_checker", status_inner)
-
     if mylist.deleted and (status_inner is None or "deleted" not in status_inner):
         await message.answer("❌Список перемещён в корзину. /bin")
         return False

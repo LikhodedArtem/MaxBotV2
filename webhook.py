@@ -28,7 +28,7 @@ async def webhook(request: Request):
     print("===webhook", data)
 
     queries = await form_webhook_to_query(data)
-    print(queries)
+    print("===webhook", queries)
     queries = await add_status_query(queries)
 
     for query in queries:

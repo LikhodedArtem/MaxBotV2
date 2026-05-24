@@ -490,6 +490,8 @@ class EventBroker:
         if not all_handlers:
             return
 
+        print("===publish_handlers", all_handlers)
+
         await asyncio.gather(*(handler(query) for handler in all_handlers))
 
 
