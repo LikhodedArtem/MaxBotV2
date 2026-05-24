@@ -41,7 +41,7 @@ async def reg_get(sender: Sender):
     async with db_helper.session_factory() as session:
         if await get_user_by_max_id(session, sender.user_id) is None:
             await sender.answer(
-                "📞Для продолжения работы, необходим ваш номер телефона",
+                "📞Для продолжения работы, необходимо нажать на кнопку, для получения ваших данных",
                 "inline_keyboard",
                 payload=Keyboards.reg(),
             )
@@ -95,10 +95,8 @@ async def help(message: Message) -> None:
 
 @broker.check([Event.MESSAGE_COMMAND("new_list"), Event.MESSAGE_CALLBACK(payload={"type": "help", "action": "new_list"})])
 async def new_list(message: Message) -> None:
-    user_id = message.sender.user_id
-
     async with db_helper.session_factory() as session:
-        mylist = await create_mylist(session, user_id)
+        mylist = await create_mylist(session, message.real_user_id)
 
     await view_list(message, mylist.uuid)
 

@@ -86,8 +86,12 @@ class MessageMixin(BaseModel):
 
         response = await send_message(message_data, chat_id=self.recipient.chat_id)
         message = response.json()["message"]
-        message = Message(**message)
-        return message
+        try:
+            message = Message(**message)
+            return message
+        except Exception:
+            print(f"Ошибка отправки сообщения. Ответ: {message}")
+            return message
 
     async def edit(
         self,
@@ -243,8 +247,12 @@ class UserMixin(BaseModel):
 
         response = await send_message(message_data, user_id=self.user_id)
         message = response.json()["message"]
-        message = Message(**message)
-        return message
+        try:
+            message = Message(**message)
+            return message
+        except Exception:
+            print(f"Ошибка отправки сообщения. Ответ: {message}")
+            return message
 
     async def status(
         self,

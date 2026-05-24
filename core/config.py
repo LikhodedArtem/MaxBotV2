@@ -23,10 +23,11 @@ settings = Settings()
 
 class BotInfo(BaseModel):
     token: str = (
-        "f9LHodD0cOK2Vf61z0Rirqtgyg6o29wjLbwM-RVkdGC8lZ4W26uYQuCTXS5mt7FzMrBVqjVVavmgJIB26Ofe"
+        "f9LHodD0cOLRkNWCatSEL7Fte8jkJfGORBd-Xj_mCBhx1q_Zy6_rDgfBVhyoItfMWyG0LllbRKDdAv8c4-zz"
     )
     free_lists_max_count: int = 5
-    my_id: int = 257767688
+    # my_id: int = 257767688
+    my_id: int = 313010077
 
 
 bot_info = BotInfo()
