@@ -110,7 +110,12 @@ async def view_lists_escape(message: Message):
     await help(message=message)
 
 
-@broker.check([Event.MESSAGE_COMMAND("bin"), Event.MESSAGE_CALLBACK(payolad={"type": "help", "action": "bin"})])
+@broker.check(
+    [
+        Event.MESSAGE_COMMAND("bin"),
+        Event.MESSAGE_CALLBACK(payload={"type": "help", "action": "bin"})
+    ]
+)
 async def bin(message: Message):
     await view_lists(message=message, deleted=True)
 
