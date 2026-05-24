@@ -27,7 +27,10 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
                         return [q1, q2]
 
                 except Exception:
-                    message = ContactMessage(**data["message"])
+                    try:
+                        message = ContactMessage(**data["message"])
+                    except Exception:
+                        return []
 
                 q1 = Query(event=Event.MESSAGE_CREATED, message=message)
                 q2 = Query(event=Event.MESSAGE_CREATED(text=text), message=message)
@@ -53,6 +56,22 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
             case "bot_started":
                 q1 = Query(
                     event=Event.BOT_STARTED,
+                    user=Sender(**data["user"]),
+                )
+
+                return [q1]
+
+            case "bot_stopped":
+                q1 = Query(
+                    event=Event.BOT_STOPPED,
+                    user=Sender(**data["user"]),
+                )
+
+                return [q1]
+
+            case "dialog_removed":
+                q1 = Query(
+                    event=Event.DIALOG_REMOVED,
                     user=Sender(**data["user"]),
                 )
 

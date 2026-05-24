@@ -15,6 +15,9 @@ from callback.payload_schemes import Payload
 class Event(Enum):
     BOT_STARTED = auto()
 
+    BOT_STOPPED = auto()
+    DIALOG_REMOVED = auto()
+
     MESSAGE_CREATED = auto()
     MESSAGE_CALLBACK = auto()
     MESSAGE_COMMAND = auto()

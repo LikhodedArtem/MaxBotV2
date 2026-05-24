@@ -14,6 +14,8 @@ async def reg_checker(queries: list[Query]) -> bool:
             or query.event
             == Event.STATUS_CALLBACK(payload={"type": "bot", "action": "reg"})
             or query.event == Event.BOT_STARTED
+            or query.event == Event.BOT_STOPPED
+            or query.event == Event.DIALOG_REMOVED
         ):
 
             return True

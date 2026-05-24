@@ -280,3 +280,19 @@ async def delete_deleted_mylists_by_max_id(
 
     await session.execute(stmt)
     await session.commit()
+
+
+async def delete_deleted_from_mylists_by_uuid(
+    session: AsyncSession, mylist_uuid: UUID
+) -> None:
+    stmt = (
+        update(MyList)
+        .where(MyList.uuid == mylist_uuid)
+        .values(
+            deleted=False,
+            delete_time=None,
+        )
+    )
+
+    await session.execute(stmt)
+    await session.commit()

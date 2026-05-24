@@ -17,6 +17,7 @@ class GlobalNames:
 
         self.list_view = {"type": "list", "action": "view"}
         self.values_view = {"type": "list", "action": "view", "inner": "values"}
+        self.sleep_time = 0.5
 
     def get(self, name: str):
         return getattr(self, name)

@@ -313,6 +313,7 @@ class EventBroker:
         checkers: Optional[list[Predicate] | Predicate] = None,
         checkers_kwargs: Optional[dict | list[dict]] = None,
         can_be_none: bool = False,
+        compare_uuids: bool = False,
     ) -> Callable[[Handler], Handler]:
         """Многофункциональный декоратор, который является главной возможностью взаимодействовать
         с брокером событий.
@@ -324,6 +325,7 @@ class EventBroker:
             checkers: Функция или список функций. Если не все функции вернули True, то функция подписчик выполняться не будет
             checkers_kwargs: kwargs передаваемые в checkers
             can_be_none: Из query в handler передаются различные ключи. Этот атрибут определяет, вызывать ли ошибку, если атрибут пуст
+            compare_uuids: Если у статуса и у callback есть uuid, и они разные, handler просто не выполниться
         """
 
         def decorator(handler: Handler) -> Handler:
@@ -358,6 +360,12 @@ class EventBroker:
                                     predicate_kwargs |= kwargs_list[i]
                                 if not await function(**predicate_kwargs):
                                     return
+
+                        if compare_uuids:
+                            su = query.status_uuid
+                            cu = query.callback_uuid
+                            if su is not None and cu is not None and su != cu:
+                                return
 
                         handler_kwargs = self._build_handler_kwargs(handler, query, can_be_none)
                         await handler(**handler_kwargs)

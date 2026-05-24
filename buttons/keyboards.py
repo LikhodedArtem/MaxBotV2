@@ -101,9 +101,15 @@ class Keyboards:
 
         keyboard = []
 
+
+
         for index, info in enumerate(lists_info):
-            btn = CallbackButton.create(f"{index + 1 + 10 * (page - 1)}. {info[0]}", p.add(uuid=info[1], inner="list"))
-            keyboard.append([btn])
+            btn_list = CallbackButton.create(f"{index + 1 + 10 * (page - 1)}. {info[0] if info[0] is not None else "Без названия"}", p.add(uuid=info[1], inner="list"))
+            if not deleted:
+                keyboard.append([btn_list])
+            else:
+                btn_list_get = CallbackButton.create("Достать🗑⬆️", p.add(type="list", action="change", uuid=info[1], inner=("deleted", "get")))
+                keyboard.append([btn_list, btn_list_get])
 
         text1, inner1 = ("❌", "nothing") if first else ("⬅️Назад", "left")
         text2, inner2 = ("❌", "nothing") if final else ("Дальше➡️", "right")
@@ -120,5 +126,28 @@ class Keyboards:
 
         escape_btn = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
         keyboard.append([escape_btn])
+
+        return {"buttons": keyboard}
+
+    @classmethod
+    def change_deleted_list(cls, payload_uuid: UUID) -> Keyboard:
+        p = PayloadStart(type="list", uuid=payload_uuid, action="change")
+
+        btn1 = CallbackButton.create("Достать из корзины🗑⬆️", p.add(inner=("deleted", "get")))
+        btn2 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
+
+        keyboard = [[btn1], [btn2]]
+
+        return {"buttons": keyboard}
+
+    @classmethod
+    def help(cls):
+        p = PayloadStart(type="help")
+
+        btn1 = CallbackButton.create("➕Создать новый список", p.add(action="new_list"))
+        btn2 = CallbackButton.create("👀Показать все списки", p.add(action="lists_view"))
+        btn3 = CallbackButton.create("🗑Корзина", p.add(action="bin"))
+
+        keyboard = [[btn1], [btn2], [btn3]]
 
         return {"buttons": keyboard}

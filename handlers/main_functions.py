@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 from uuid import UUID
 
@@ -13,17 +14,26 @@ from crud import (
     create_user,
     get_user_by_max_id,
     update_mylist_field,
-    delete_mylist_with_values_by_uuid,
     create_mylist_value,
     delete_mylist_value_by_id,
     update_mylist_value_value_by_id,
     update_made_of_mylist_value,
-    get_mylist_value_id_by_number, update_delete_to_mylist_by_uuid,
+    update_delete_to_mylist_by_uuid,
 )
 
 from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
 from handlers.help_functions import *
+
+
+@broker.check(Event.DIALOG_REMOVED)
+async def dialog_removed(sender: Sender):
+    await sender.clear_status()
+
+
+@broker.check(Event.BOT_STOPPED)
+async def dialog_removed(sender: Sender):
+    await sender.clear_status()
 
 
 @broker.check([Event.BOT_STARTED, Event.MESSAGE_COMMAND("reg")])
@@ -39,7 +49,7 @@ async def reg_get(sender: Sender):
             status = create_status(type="bot", action="reg")
             await sender.status(status)
         else:
-            await sender.answer(GN.help_text)
+            await sender.answer(GN.help_text, "inline_keyboard", payload=Keyboards.help())
 
 
 @broker.check(Event.STATUS_CALLBACK(payload={"type": "bot", "action": "reg"}))
@@ -64,6 +74,8 @@ async def reg_set(message: ContactMessage):
 
         try:
             message: Message
+
+            await asyncio.sleep(GN.sleep_time)
             await help(message=message)
         except Exception as e:
             raise ValueError(e)
@@ -78,10 +90,10 @@ async def reg_set(message: ContactMessage):
 
 @broker.check(Event.MESSAGE_COMMAND("help"))
 async def help(message: Message) -> None:
-    await message.answer(GN.help_text)
+    await message.answer(GN.help_text, "inline_keyboard", payload=Keyboards.help())
 
 
-@broker.check(Event.MESSAGE_COMMAND("new_list"))
+@broker.check([Event.MESSAGE_COMMAND("new_list"), Event.MESSAGE_CALLBACK(payload={"type": "help", "action": "new_list"})])
 async def new_list(message: Message) -> None:
     user_id = message.sender.user_id
 
@@ -104,10 +116,10 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
         )
         return
 
-    mylist_type = "Не указан" if mylist.type is None else mylist.type
-    mylist_title = "Отсутствует" if mylist.title is None else mylist.title
+    mylist_type = "<i>Не указан</i>" if mylist.type is None else mylist.type
+    mylist_title = "<i>Отсутствует</i>" if mylist.title is None else mylist.title
     mylist_description = (
-        "Отсутствует" if mylist.description is None else mylist.description
+        "<i>Отсутствует</i>" if mylist.description is None else mylist.description
     )
 
     mylist_values = mylist_values_to_form(mylist.values)
@@ -131,13 +143,18 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
         f"{delete_time}\n"
     )
 
+    if not deleted:
+        payload = Keyboards.change_list(mylist.uuid)
+    else:
+        payload = Keyboards.change_deleted_list(mylist.uuid)
+
     if not edit:
         await message.answer(
-            text, "inline_keyboard", payload=Keyboards.change_list(mylist.uuid)
+            text, "inline_keyboard", payload=payload
         )
     else:
         await message.edit(
-            text, "inline_keyboard", payload=Keyboards.change_list(mylist.uuid)
+            text, "inline_keyboard", payload=payload
         )
 
     delete_inner = ("deleted",) if mylist.deleted else tuple()
@@ -185,18 +202,25 @@ async def list_field_set(
 
     ru_field = GN.get(field)
 
-    text = (
+    answer_text = (
         f"Новое {ru_field} сохранено✅"
         if field != "type"
         else f"Новый {ru_field} сохранён✅"
     )
 
-    async with db_helper.session_factory() as session:
-        await update_mylist_field(session, payload_uuid, field, message.body.text)
+    text = message.body.text
 
-    await message.answer(text)
+    if len(text) < 64:
+        async with db_helper.session_factory() as session:
+            await update_mylist_field(session, payload_uuid, field, text)
+
+        await message.answer(answer_text)
+    else:
+        await message.answer(f"❌Слишком длинн{"ое" if field != "type" else "ый"} <b>{ru_field}</b> списка")
+
     await message.clear_status()
 
+    await asyncio.sleep(GN.sleep_time)
     await view_list(message, payload_uuid)
 
 
@@ -206,6 +230,7 @@ async def list_field_set(
     ),
     checkers=list_checker,
     allowed=GN.list_view,
+    compare_uuids=True,
 )
 async def first_delete(message: Message, payload_uuid: UUID) -> None:
     await message.answer(
@@ -225,6 +250,7 @@ async def first_delete(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed="List-Delete",
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def second_delete(message: Message, payload_uuid: UUID) -> None:
     await message.edit(
@@ -242,6 +268,7 @@ async def second_delete(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed="List-Delete",
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def final_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
@@ -249,10 +276,11 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
     async with db_helper.session_factory() as session:
         await update_delete_to_mylist_by_uuid(session, payload_uuid)
 
-    await message.answer("✅Список удалён и перемещён в корзину. /bin")
+    await message.answer("✅Список перемещён в корзину. /bin")
 
     await message.clear_status()
 
+    await asyncio.sleep(GN.sleep_time)
     await help(message=message)
 
 
@@ -267,6 +295,7 @@ async def final_delete(message: Message, payload_uuid: UUID) -> None:
     ],
     "List-Delete",
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def cancel_delete(message: Message, payload_uuid: UUID) -> None:
     await message.delete()
@@ -299,8 +328,9 @@ async def list_view_escape(message: Message, status_inner: tuple[str] | None) ->
     Event.MESSAGE_CALLBACK(
         payload={"type": "list", "action": "change", "inner": ("values", "start")}
     ),
-    checkers=list_checker,
     allowed=GN.list_view,
+    checkers=list_checker,
+    compare_uuids=True,
 )
 async def view_values(message: Message, payload_uuid: UUID) -> None:
     status = create_status(
@@ -333,6 +363,7 @@ async def view_values(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed=GN.values_view,
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def add_value_get(message: Message, payload_uuid: UUID) -> None:
     await message.answer("✏️Напишите новый <b>пункт</b> списка")
@@ -349,15 +380,21 @@ async def add_value_get(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed=GN.values_view,
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def add_value_set(message: Message, payload_uuid: UUID) -> None:
     async with db_helper.session_factory() as session:
-        await create_mylist_value(session, payload_uuid, message.body.text)
+        text = message.body.text
 
-        await message.answer("✅Новый пункт создан")
+        if len(text) < 64:
+            await create_mylist_value(session, payload_uuid, text)
+            await message.answer("✅Новый пункт создан")
+        else:
+            await message.answer("❌Слишком длинный пункт списка")
 
         await message.clear_status()
 
+        await asyncio.sleep(GN.sleep_time)
         await view_values(message=message, payload_uuid=payload_uuid)
 
 
@@ -371,6 +408,7 @@ async def add_value_set(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed=GN.values_view,
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def delete_value_get(message: Message, payload_uuid: UUID) -> None:
     await message.answer("🗑Напишите <b>номер пункта</b> для удаления")
@@ -394,6 +432,7 @@ async def delete_value_get(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed=GN.values_view,
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
     text_id = message.body.text
@@ -412,6 +451,7 @@ async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
 
     await message.clear_status()
 
+    await asyncio.sleep(GN.sleep_time)
     await view_values(message=message, payload_uuid=payload_uuid)
 
 
@@ -425,6 +465,7 @@ async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
     ),
     allowed=GN.values_view,
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def change_value_get_id(message: Message, payload_uuid: UUID) -> None:
     await message.answer("✏️Напишите <b>номер пункта</b> для изменения")
@@ -486,14 +527,19 @@ async def change_value_set(
     message: Message, payload_uuid: UUID, payload_inner: tuple[str]
 ) -> None:
     value_id = int(payload_inner[-1])
+    text = message.body.text
 
-    async with db_helper.session_factory() as session:
-        await update_mylist_value_value_by_id(session, value_id, message.body.text)
+    if len(text) < 64:
+        async with db_helper.session_factory() as session:
+            await update_mylist_value_value_by_id(session, value_id, text)
 
-    await message.answer("✅Пункт изменён")
+        await message.answer("✅Пункт изменён")
+    else:
+        await message.answer("❌Слишком длинный пункт списка")
 
     await message.clear_status()
 
+    await asyncio.sleep(GN.sleep_time)
     await view_values(message=message, payload_uuid=payload_uuid)
 
 
@@ -503,6 +549,7 @@ async def change_value_set(
     ),
     allowed=GN.values_view,
     checkers=list_checker,
+    compare_uuids=True,
 )
 async def change_value_escape(message: Message, payload_uuid: UUID) -> None:
     await message.clear_status()
@@ -516,6 +563,9 @@ async def change_value_escape(message: Message, payload_uuid: UUID) -> None:
 async def mark_value(
     message: Message, payload_uuid: UUID, payload_inner: tuple[str]
 ) -> None:
+    if "deleted" in payload_inner:
+        return
+
     text = message.body.text
     if not len(text) > 1:
         return
