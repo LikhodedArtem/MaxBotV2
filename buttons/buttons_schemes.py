@@ -15,11 +15,11 @@ from pydantic import BaseModel, Field
 from typing import Optional, Union
 
 
-class BaseButton(BaseModel):
+class MixinButton(BaseModel):
     text: str = Field(..., min_length=1, max_length=128)
 
 
-class CallbackButton(BaseButton):
+class CallbackButton(MixinButton):
     type: str = "callback"
     payload: str = Field(..., max_length=1024)
 
@@ -28,7 +28,7 @@ class CallbackButton(BaseButton):
         return cls(text=text, payload=payload)
 
 
-class LinkButton(BaseButton):
+class LinkButton(MixinButton):
     type: str = "link"
     url: str = Field(..., max_length=2048)
 
@@ -37,7 +37,7 @@ class LinkButton(BaseButton):
         return cls(text=text, url=url)
 
 
-class RequestGeoLocationButton(BaseButton):
+class RequestGeoLocationButton(MixinButton):
     type: str = "request_geo_location"
     quick: Optional[bool]
 
@@ -48,7 +48,7 @@ class RequestGeoLocationButton(BaseButton):
         return cls(text=text, quick=quick)
 
 
-class RequestContactButton(BaseButton):
+class RequestContactButton(MixinButton):
     type: str = "request_contact"
 
     @classmethod
@@ -56,7 +56,7 @@ class RequestContactButton(BaseButton):
         return cls(text=text)
 
 
-class OpenAppButton(BaseButton):
+class OpenAppButton(MixinButton):
     type: str = "open_app"
     wep_app: Optional[str]
     contact_id: Optional[int]
@@ -73,7 +73,7 @@ class OpenAppButton(BaseButton):
         return cls(text=text, wep_app=wep_app, contact_id=contact_id, payload=payload)
 
 
-class MessageButton(BaseButton):
+class MessageButton(MixinButton):
     type: str = "message"
 
     @classmethod
@@ -81,7 +81,7 @@ class MessageButton(BaseButton):
         return cls(text=text)
 
 
-class ClipboardButton(BaseButton):
+class ClipboardButton(MixinButton):
     payload: str = Field(..., max_length=1024)
 
     @classmethod

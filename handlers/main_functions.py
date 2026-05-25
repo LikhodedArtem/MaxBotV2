@@ -361,7 +361,7 @@ async def view_values(message: Message, payload_uuid: UUID) -> None:
     compare_uuids=True,
 )
 async def add_value_get(message: Message, payload_uuid: UUID) -> None:
-    await message.answer("✏️Напишите новый <b>пункт</b> списка")
+    await message.answer("✏️Пишите новые <b>пункты</b> списка, пока не захотите выйти", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
 
     status = create_status(
         type="list", uuid=payload_uuid, action="change", inner=("values", "add", "set")
@@ -378,19 +378,14 @@ async def add_value_get(message: Message, payload_uuid: UUID) -> None:
     compare_uuids=True,
 )
 async def add_value_set(message: Message, payload_uuid: UUID) -> None:
-    async with db_helper.session_factory() as session:
-        text = message.body.text
+    text = message.body.text
 
-        if len(text) < 64:
+    if len(text) < 64:
+        async with db_helper.session_factory() as session:
             await create_mylist_value(session, payload_uuid, text)
-            await message.answer("✅Новый пункт создан")
-        else:
-            await message.answer("❌Слишком длинный пункт списка")
-
-        await message.clear_status()
-
-        await asyncio.sleep(GN.sleep_time)
-        await view_values(message=message, payload_uuid=payload_uuid)
+        await message.answer("✅Новый пункт создан", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
+    else:
+        await message.answer("❌Слишком длинный пункт списка", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
 
 
 @broker.check(
@@ -406,7 +401,7 @@ async def add_value_set(message: Message, payload_uuid: UUID) -> None:
     compare_uuids=True,
 )
 async def delete_value_get(message: Message, payload_uuid: UUID) -> None:
-    await message.answer("🗑Напишите <b>номер пункта</b> для удаления")
+    await message.answer("🗑Напишите <b>номер пункта</b> для удаления", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
 
     status = create_status(
         type="list",
@@ -463,7 +458,7 @@ async def delete_value_set(message: Message, payload_uuid: UUID) -> None:
     compare_uuids=True,
 )
 async def change_value_get_id(message: Message, payload_uuid: UUID) -> None:
-    await message.answer("✏️Напишите <b>номер пункта</b> для изменения")
+    await message.answer("✏️Напишите <b>номер пункта</b> для изменения", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
 
     status = create_status(
         type="list",
@@ -491,7 +486,7 @@ async def change_value_get_value(message: Message, payload_uuid: UUID) -> None:
         if value_id is None:
             raise ValueError
 
-        await message.answer("✏️Напишите <b>новое значение</b> этого пункта")
+        await message.answer("✏️Напишите <b>новое значение</b> этого пункта", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
 
         status = create_status(
             type="list",

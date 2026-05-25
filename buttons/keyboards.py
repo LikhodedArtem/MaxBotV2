@@ -149,3 +149,13 @@ class Keyboards:
         keyboard = [[btn1], [btn2], [btn3]]
 
         return {"buttons": keyboard}
+
+    @classmethod
+    def change_values_escape(cls, payload_uuid: UUID) -> Keyboard:
+        p = PayloadStart(type="list", uuid=payload_uuid, action="change", inner="values")
+
+        btn1 = CallbackButton.create("Вернуться⬆️", p.add(inner=("partly", "escape")))
+
+        keyboad = [[btn1]]
+
+        return {"buttons": keyboad}

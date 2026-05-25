@@ -42,7 +42,10 @@ class Event(Enum):
             raise ValueError("Не правильный формат данных для MESSAGE_COMMAND")
 
         if self == Event.MESSAGE_CALLBACK:
-            payload = kwargs["payload"] if "payload" in kwargs else None
+            if "payload" not in kwargs:
+                raise ValueError("Для Event.MESSAGE_CALLBACK не указан payload")
+
+            payload = kwargs["payload"]
 
             if payload is None:
                 return MessageCallback(payload=None)
@@ -55,6 +58,9 @@ class Event(Enum):
             raise ValueError("Не правильный формат данных для MESSAGE_CALLBACK")
 
         if self == Event.STATUS_CALLBACK:
+            if "payload" not in kwargs and "name" not in kwargs:
+                raise ValueError("Для Event.STATUS_CALLBACK не указан ни name, ни payload")
+
             name = kwargs["name"] if "name" in kwargs else None
             payload = kwargs["payload"] if "payload" in kwargs else None
 
