@@ -1,11 +1,13 @@
 import asyncio
 import json
+import logging
 
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from broker import broker
+from core.config import bot_info
 from form_webhook import form_webhook_to_query
 from status.status_functions import add_status_query
 
@@ -22,7 +24,20 @@ async def ping_pong():
 @app.post("/webhook")
 async def webhook(request: Request):
     body = await request.body()
-    # secret = request.headers.get("X-Max-Bot-Api-Secret")
+
+    secret = request.headers.get("x-max-bot-api-secret")
+
+    if bot_info.secret_key != secret:
+        logging.error("Попытка прислать данные с неверным ключом!")
+        return JSONResponse(status_code=401,
+        content={"error":
+                    {
+                    "code": "invalid_client_secret",
+                    "message": f"Указан неверный секретный ключ {secret}."
+                    }
+                }
+        )
+
     data = json.loads(body.decode())
 
     print("===webhook", data)
