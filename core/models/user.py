@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, relationship, mapped_column
 from .base import Base
 
 if TYPE_CHECKING:
+    from .user_mylist_association import UserMyListAssociation
     from .mylist import MyList
 
 
@@ -22,7 +23,16 @@ class User(Base):
     is_bot: Mapped[bool]
     last_activity_time: Mapped[int]
 
-    mylists: Mapped[list[MyList]] = relationship(back_populates="user")
+    mylist_links: Mapped[list[UserMyListAssociation]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    mylists: Mapped[list[MyList]] = relationship(
+        secondary="user_mylist_association",
+        back_populates="users",
+        viewonly=True,
+    )
 
     async def get_list_count(self) -> int:
         return len(self.mylists)

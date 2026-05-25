@@ -27,6 +27,7 @@ from core.models.base import Base
 from core.models.mylist import MyList
 from core.models.user import User
 from core.models.mylist_value import MyListValue
+from core.models.user_mylist_association import UserMyListAssociation
 
 target_metadata = Base.metadata
 

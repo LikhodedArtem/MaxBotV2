@@ -5,11 +5,29 @@ from uuid import UUID
 from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from core.models.user import User
 from core.models.mylist import MyList
 from core.models.mylist_value import MyListValue
+from core.models.user_mylist_association import UserMyListAssociation, MyListUserRole
+
+
+test_user_data = {
+    "max_id": 322,
+    "chat_id": 322,
+    "first_name": "Jake",
+    "last_name": "Smith",
+    "username": "jake",
+    "is_bot": False,
+    "last_activity_time": 123892183,
+}
+
+test_mylist_data = {
+    "title": "Название",
+    "description": "Описание",
+    "type": "Тип",
+}
 
 
 async def create_user(session: AsyncSession, user_data: dict) -> User | None:
@@ -28,13 +46,25 @@ async def create_user(session: AsyncSession, user_data: dict) -> User | None:
 
 async def create_mylist(session: AsyncSession, user_id: int) -> MyList | None:
     try:
-        mylist = MyList(user_id=user_id)
+        user = await get_user_by_max_id(session, user_id)
+        mylist = MyList()
         mylist.create_time = datetime.now(timezone(timedelta(hours=3))).replace(microsecond=0)
+
+        link = UserMyListAssociation(
+            user=user,
+            mylist=mylist,
+            role=MyListUserRole.AUTHOR,
+        )
+
         session.add(mylist)
+        session.add(link)
+
         await session.commit()
         await session.refresh(mylist)
+        await session.refresh(link)
         return mylist
-    except:
+    except Exception as e:
+        print(e)
         return None
 
 async def create_mylist_value(
@@ -74,7 +104,14 @@ async def get_user_by_max_id(session: AsyncSession, max_id: int) -> User | None:
 
 
 async def get_mylist_by_uuid(session: AsyncSession, mylist_uuid: UUID) -> MyList | None:
-    stmt = select(MyList).where(MyList.uuid == mylist_uuid)
+    stmt = (
+        select(MyList)
+        .where(MyList.uuid == mylist_uuid)
+        .options(
+            selectinload(MyList.user_links)
+            .joinedload(UserMyListAssociation.user)
+        )
+    )
     result = await session.execute(stmt)
     mylist = result.scalar_one_or_none()
 
@@ -101,15 +138,6 @@ async def get_mylist_with_values_by_uuid(
         return None
 
     return mylist
-
-
-async def get_users_with_mylists_with_values(session: AsyncSession):
-    stmt = (
-        select(User)
-        .options(selectinload(User.mylists).selectinload(MyList.values))
-        .order_by(User.id)
-    )
-    users = await session.scalars(stmt)
 
 
 async def get_mylist_value_by_id(
@@ -162,18 +190,6 @@ async def update_mylist_field(
     await session.commit()
 
 
-async def delete_mylist_with_values_by_uuid(
-    session: AsyncSession, mylist_uuid: UUID
-) -> None:
-    stmt1 = delete(MyListValue).where(MyListValue.mylist_uuid == mylist_uuid)
-    stmt2 = delete(MyList).where(MyList.uuid == mylist_uuid)
-
-    await session.execute(stmt1)
-    await session.execute(stmt2)
-
-    await session.commit()
-
-
 async def update_made_of_mylist_value(
     session: AsyncSession, value_id: int
 ) -> None:
@@ -212,11 +228,15 @@ async def get_mylists_by_max_id(
 ) -> list[MyList] | None:
     stmt = (
         select(MyList)
-        .where(MyList.user_id == max_id)
-        .where(MyList.deleted == deleted)
+        .join(MyList.user_links)
+        .where(
+            UserMyListAssociation.user_id == max_id,
+            MyList.deleted == deleted
+        )
         .order_by(MyList.id)
         .limit(11)
         .offset((page - 1) * 10)
+        .options(selectinload(MyList.user_links))
     )
 
     result = await session.execute(stmt)
@@ -246,12 +266,21 @@ async def delete_deleted_mylists_by_max_id(
     session: AsyncSession, max_id: int
 ) -> None:
     stmt = (
-        delete(MyList)
-        .where(MyList.user_id == max_id)
-        .where(MyList.deleted == True)
+        select(MyList)
+        .join(MyList.user_links)
+        .where(
+            UserMyListAssociation.user_id == max_id,
+            MyList.deleted.is_(False)
+        )
+        .options(selectinload(MyList.user_links))
     )
 
-    await session.execute(stmt)
+    result = await session.execute(stmt)
+    mylists = result.scalars().all()
+
+    for mylist in mylists:
+        await session.delete(mylist)
+
     await session.commit()
 
 
