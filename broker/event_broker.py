@@ -207,7 +207,8 @@ class EventBroker:
         if not isinstance(event, PayloadEvent):
             return current_node.get(event, set())
         else:
-            return self.get_handlers_from_payload_event(event, current_node)
+            smth = self.get_handlers_from_payload_event(event, current_node)
+            return smth
 
     def get_handlers_from_payload_event(
         self, event: PayloadEvent, current: Optional[dict] = None
@@ -275,6 +276,8 @@ class EventBroker:
 
         handlers = set()
         for key in current_node:
+            if isinstance(key, SubPayloadEvent):
+                return handlers
             if key == "__handlers__":
                 handlers |= current_node[key]
             elif isinstance(current_node[key], dict):
@@ -414,7 +417,7 @@ class EventBroker:
                     for status in allowed_statuses:
                         for event in events:
                             self.subscribe_on_event_with_status(event, wrapper, status)
-                if without_allowed:
+                if allowed_statuses is not None and without_allowed:
                     for event in events:
                         self.subscribe_on_event(event, wrapper)
 
@@ -489,8 +492,6 @@ class EventBroker:
 
         if not all_handlers:
             return
-
-        print("===publish_handlers", all_handlers)
 
         await asyncio.gather(*(handler(query) for handler in all_handlers))
 

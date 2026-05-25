@@ -5,6 +5,7 @@ import logging
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pprint import pprint
 
 from broker import broker
 from core.config import bot_info
@@ -20,6 +21,8 @@ app = FastAPI()
 async def ping_pong():
     return "pong"
 
+
+pprint(broker.subscribers)
 
 @app.post("/webhook")
 async def webhook(request: Request):

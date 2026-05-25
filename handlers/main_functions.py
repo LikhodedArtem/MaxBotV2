@@ -389,6 +389,22 @@ async def add_value_set(message: Message, payload_uuid: UUID) -> None:
 
 
 @broker.check(
+    Event.MESSAGE_CALLBACK(payload={"type": "l", "action": ";"}),
+    allowed=[
+        {"type": "list", "action": "change", "inner": ("values", "add", "set")},
+        {"type": "list", "action": "change", "inner": ("values", "delete", "set")},
+        {"type": "list", "action": "change", "inner": ("values", "change", "get_value")},
+        {"type": "list", "action": "change", "inner": ("values", "change", "set")},
+    ],
+    without_allowed=False
+)
+async def change_value_partly_escape(message: Message, payload_uuid: UUID) -> None:
+    await message.clear_status()
+
+    await view_values(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
     Event.MESSAGE_CALLBACK(
         payload={
             "type": "list",
