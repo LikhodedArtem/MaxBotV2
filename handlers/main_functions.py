@@ -361,7 +361,7 @@ async def view_values(message: Message, payload_uuid: UUID) -> None:
     compare_uuids=True,
 )
 async def add_value_get(message: Message, payload_uuid: UUID) -> None:
-    await message.answer("✏️Пишите новые <b>пункты</b> списка, пока не захотите выйти", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
+    await message.answer("✏️Пишите новые <b>пункты</b> списка, пока не захотите вернуться", "inline_keyboard", payload=Keyboards.change_values_escape(payload_uuid))
 
     status = create_status(
         type="list", uuid=payload_uuid, action="change", inner=("values", "add", "set")
