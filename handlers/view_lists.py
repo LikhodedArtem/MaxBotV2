@@ -6,7 +6,7 @@ from broker.event import Event
 from buttons.keyboards import Keyboards
 from core.config import bot_info
 from core.global_names import GN
-from core.models.db_helper import db_helper
+from core.models import db_helper
 from handlers.checkers import list_checker
 from crud import get_mylists_by_max_id, delete_deleted_mylists_by_max_id, delete_deleted_from_mylists_by_uuid
 

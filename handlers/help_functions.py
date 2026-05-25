@@ -1,9 +1,8 @@
-__all__ = ["mylist_values_to_form", "format_get_mylist_value_id_by_number"]
+__all__ = ["mylist_values_to_form", "mylist_owners_to_form", "format_get_mylist_value_id_by_number"]
 
 from uuid import UUID
 
-from core.models.db_helper import db_helper
-from core.models.mylist_value import MyListValue
+from core.models import db_helper, MyListValue, MyListUserRole, User
 from sqlalchemy.orm import Mapped
 
 from crud import get_mylist_value_id_by_number
@@ -27,6 +26,44 @@ def mylist_values_to_form(
             values_text += f"  /{i + 1}  {cod1} {value.value} {cod2}\n"
 
     return values_text
+
+
+def mylist_owners_to_form(
+        user_links, user_id: int
+) -> tuple[str, MyListUserRole]:
+    author_text = "<b>Автор:</b>\n"
+    admins_text = "<b>Администраторы:</b>\n"
+    users_text = "<b>Пользователи:</b>\n"
+
+    author = ""
+    admins = []
+    users = []
+
+    my_role = MyListUserRole
+
+    for link in user_links:
+        user: User = link.user
+        is_you = user.max_id = user_id
+        if is_you:
+            my_role = link.role
+        add_text = " <i>(Вы)</i>\n" if is_you else "\n"
+        fio = f"{user.first_name}" + f" {user.last_name}" if user.last_name is not None else ""
+        match link.role:
+            case MyListUserRole.AUTHOR:
+                author += f"\t- {fio}" + add_text
+            case MyListUserRole.ADMIN:
+                admins.append(f"\t- {fio}" + add_text)
+            case MyListUserRole.USER:
+                users.append(f"\t- {fio}" + add_text)
+
+    final_text = author_text + author
+    if admins:
+        final_text += admins_text + "".join(admins)
+    if users:
+        final_text += users_text + "".join(users)
+
+    return final_text, my_role
+
 
 
 async def format_get_mylist_value_id_by_number(

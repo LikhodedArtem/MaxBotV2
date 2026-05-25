@@ -7,10 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload, joinedload
 
-from core.models.user import User
-from core.models.mylist import MyList
-from core.models.mylist_value import MyListValue
-from core.models.user_mylist_association import UserMyListAssociation, MyListUserRole
+from core.models import *
 
 
 test_user_data = {
@@ -107,10 +104,6 @@ async def get_mylist_by_uuid(session: AsyncSession, mylist_uuid: UUID) -> MyList
     stmt = (
         select(MyList)
         .where(MyList.uuid == mylist_uuid)
-        .options(
-            selectinload(MyList.user_links)
-            .joinedload(UserMyListAssociation.user)
-        )
     )
     result = await session.execute(stmt)
     mylist = result.scalar_one_or_none()
@@ -129,6 +122,30 @@ async def get_mylist_with_values_by_uuid(
         select(MyList)
         .where(MyList.uuid == mylist_uuid)
         .options(selectinload(MyList.values))
+    )
+
+    result = await session.execute(stmt)
+    mylist = result.scalar_one_or_none()
+
+    if mylist is None:
+        return None
+
+    return mylist
+
+
+async def get_mylist_with_values_with_users_by_uuid(
+    session: AsyncSession,
+    mylist_uuid: UUID,
+) -> MyList | None:
+    stmt = (
+        select(MyList)
+        .join(MyList.user_links)
+        .where(MyList.uuid == mylist_uuid)
+        .options(
+            selectinload(MyList.values),
+            selectinload(MyList.user_links)
+            .joinedload(UserMyListAssociation.user),
+        )
     )
 
     result = await session.execute(stmt)
@@ -298,3 +315,13 @@ async def delete_deleted_from_mylists_by_uuid(
 
     await session.execute(stmt)
     await session.commit()
+
+
+async def main() -> None:
+    async with db_helper.session_factory() as session:
+        mylist = await get_mylist_with_values_with_users_by_uuid(session, UUID("4b7d5ef664364ae5b3c338d70d6cd0af"))
+        print([link.user for link in mylist.user_links])
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

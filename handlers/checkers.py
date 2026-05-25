@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from messages.message_schemes import Message
-from core.models.db_helper import db_helper
+from core.models import db_helper
 from crud import get_mylist_by_uuid
 
 

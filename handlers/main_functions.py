@@ -6,11 +6,11 @@ from broker import broker
 from broker.event import Event
 from buttons.keyboards import Keyboards
 from core.global_names import GN
-from core.models.db_helper import db_helper
+from core.models import db_helper, MyListUserRole
 from handlers.checkers import list_checker
 from crud import (
     create_mylist,
-    get_mylist_with_values_by_uuid,
+    get_mylist_with_values_with_users_by_uuid,
     create_user,
     get_user_by_max_id,
     update_mylist_field,
@@ -18,7 +18,7 @@ from crud import (
     delete_mylist_value_by_id,
     update_mylist_value_value_by_id,
     update_made_of_mylist_value,
-    update_delete_to_mylist_by_uuid,
+    update_delete_to_mylist_by_uuid, get_mylist_with_values_by_uuid,
 )
 
 from messages.message_schemes import Message, ContactMessage, Sender
@@ -101,12 +101,12 @@ async def new_list(message: Message) -> None:
     await view_list(message, mylist.uuid)
 
 
-async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is_from_lists: bool = False, page: Optional[int] = None) -> None:
+async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is_from_lists: bool = False, page: Optional[int] = None, view_owners: bool = False) -> None:
     if is_from_lists and page is None or page is not None and not is_from_lists:
         raise ValueError("Было передан или только page или только is_from_lists. Должно быть передано либо ничего из этого, либо оба сразу")
 
     async with db_helper.session_factory() as session:
-        mylist = await get_mylist_with_values_by_uuid(session, payload_uuid)
+        mylist = await get_mylist_with_values_with_users_by_uuid(session, payload_uuid)
 
     if mylist is None:
         await message.answer(
@@ -121,6 +121,7 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
     )
 
     mylist_values = mylist_values_to_form(mylist.values)
+    mylist_owners, my_role = mylist_owners_to_form(mylist.user_links, message.real_user_id)
 
     if mylist.deleted:
         emoji = "🗑"
@@ -137,14 +138,20 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
         f"<b>Название</b>: {mylist_title}\n"
         f"<b>Описание</b>: {mylist_description}\n\n"
         f"<b>Содержание</b>:\n{mylist_values}\n"
-        f"<b>Дата создания</b>: {mylist.create_time}\n"
-        f"{delete_time}\n"
+        f"{delete_time}"
     )
 
     if not deleted:
-        payload = Keyboards.change_list(mylist.uuid)
+        payload = Keyboards.change_list(mylist.uuid, my_role, view_owners)
     else:
         payload = Keyboards.change_deleted_list(mylist.uuid)
+
+    if view_owners:
+        text += f"\n{mylist_owners}"
+        if my_role == MyListUserRole.USER:
+            text += "\n**У вас недостаточно прав для изменения списка**"
+
+    text += f"<b>Дата создания</b>: {mylist.create_time}\n"
 
     if not edit:
         await message.answer(
@@ -590,3 +597,27 @@ async def mark_value(
         await view_values(message=message, payload_uuid=payload_uuid)
     else:
         await view_list(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("view", "owners")}
+    ),
+    allowed=GN.list_view,
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_view_owners(message: Message, payload_uuid: UUID) -> None:
+    await view_list(message=message, payload_uuid=payload_uuid, edit=True, view_owners=True)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("hide", "owners")}
+    ),
+    allowed=GN.list_view,
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_view_owners(message: Message, payload_uuid: UUID) -> None:
+    await view_list(message=message, payload_uuid=payload_uuid, edit=True, view_owners=False)

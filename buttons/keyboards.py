@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped
 
 from buttons.buttons_schemes import *
 from callback.payload_schemes import PayloadStart
+from core.models import MyListUserRole
 
 Keyboard: dict[str, list[list[Button]]]
 
@@ -18,20 +19,28 @@ class Keyboards:
     @classmethod
     def change_list(
         cls,
-        payload_uuid: UUID | Mapped[UUID],
+        payload_uuid: UUID | Mapped[UUID], user_role: MyListUserRole, view_owners: bool = False
     ) -> Keyboard:
         p = PayloadStart(type="list", uuid=payload_uuid, action="change")
 
-        btn1 = CallbackButton.create("Название", p.add(inner=("field", "title")))
-        btn2 = CallbackButton.create("Описание", p.add(inner=("field", "description")))
-        btn3 = CallbackButton.create("Тип", p.add(inner=("field", "type")))
-        btn4 = CallbackButton.create("Содержимое", p.add(inner=("values", "start")))
-        btn5 = CallbackButton.create(
-            "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
-        )
-        btn6 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
+        if not view_owners:
+            btn_view_owners = CallbackButton.create("👀Показать участников списка", p.add(inner=("view", "owners")))
+        else:
+            btn_view_owners = CallbackButton.create("👥Скрыть участников списка", p.add(inner=("hide", "owners")))
+        btn_escape = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
 
-        keyboard = [[btn1, btn2], [btn3, btn4], [btn5, btn6]]
+        if user_role != MyListUserRole.USER:
+            btn1 = CallbackButton.create("Название", p.add(inner=("field", "title")))
+            btn2 = CallbackButton.create("Описание", p.add(inner=("field", "description")))
+            btn3 = CallbackButton.create("Тип", p.add(inner=("field", "type")))
+            btn4 = CallbackButton.create("Содержимое", p.add(inner=("values", "start")))
+            btn5 = CallbackButton.create(
+                "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
+            )
+
+            keyboard = [[btn_view_owners], [btn1, btn2], [btn3, btn4], [btn5, btn_escape]]
+        else:
+            keyboard = [[btn_view_owners], [btn_escape]]
 
         return {"buttons": keyboard}
 

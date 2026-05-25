@@ -1,6 +1,6 @@
 from core.config import bot_info
 from messages.message_schemes import Message
-from core.models.db_helper import db_helper
+from core.models import db_helper
 from crud import get_user_by_max_id
 from broker.query import Query
 from broker.event import Event

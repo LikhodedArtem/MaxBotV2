@@ -22,12 +22,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata\
 
 from core.config import settings
-from core.models.base import Base
-
-from core.models.mylist import MyList
-from core.models.user import User
-from core.models.mylist_value import MyListValue
-from core.models.user_mylist_association import UserMyListAssociation
+from core.models import *
 
 target_metadata = Base.metadata
 
