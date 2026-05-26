@@ -6,6 +6,7 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.exc import PendingRollbackError
 
 from core.models import *
 
@@ -139,7 +140,6 @@ async def get_mylist_with_values_with_users_by_uuid(
 ) -> MyList | None:
     stmt = (
         select(MyList)
-        .join(MyList.user_links)
         .where(MyList.uuid == mylist_uuid)
         .options(
             selectinload(MyList.values),
@@ -150,10 +150,6 @@ async def get_mylist_with_values_with_users_by_uuid(
 
     result = await session.execute(stmt)
     mylist = result.scalar_one_or_none()
-
-    if mylist is None:
-        return None
-
     return mylist
 
 
@@ -243,11 +239,16 @@ async def get_mylist_value_id_by_number(
 async def get_mylists_by_max_id(
     session: AsyncSession, max_id: int, page: int = 1, deleted: bool = False
 ) -> list[MyList] | None:
+    user = await get_user_by_max_id(session, max_id)
+
+    if user is None:
+        return
+
     stmt = (
         select(MyList)
         .join(MyList.user_links)
         .where(
-            UserMyListAssociation.user_id == max_id,
+            UserMyListAssociation.user_id == user.id,
             MyList.deleted == deleted
         )
         .order_by(MyList.id)
@@ -315,6 +316,58 @@ async def delete_deleted_from_mylists_by_uuid(
 
     await session.execute(stmt)
     await session.commit()
+
+
+async def add_user_to_list(session: AsyncSession, mylist_uuid: UUID, user_data: dict) -> None:
+    user = await get_user_by_max_id(session, user_data["user_id"])
+    if user is None:
+        user = await create_user(session, user_data)
+
+    mylist = await get_mylist_by_uuid(session, mylist_uuid)
+
+    link = UserMyListAssociation(
+        user=user,
+        mylist=mylist,
+        role=MyListUserRole.USER,
+    )
+
+    session.add(link)
+    await session.commit()
+    await session.refresh(user)
+    await session.refresh(link)
+
+
+async def add_telephone_to_user_by_max_id(
+    session: AsyncSession, max_id: int, telephone: str
+):
+    stmt = (
+        update(User)
+        .where(User.max_id == max_id)
+        .values(
+            telephone=telephone,
+        )
+    )
+
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def get_users_with_roles_by_mylist_uuid(
+    session: AsyncSession,
+    mylist_uuid: UUID,
+) -> list[tuple[User, MyListUserRole]]:
+    stmt = (
+        select(UserMyListAssociation)
+        .join(UserMyListAssociation.mylist)
+        .join(UserMyListAssociation.user)
+        .where(MyList.uuid == mylist_uuid)
+        .options(joinedload(UserMyListAssociation.user))
+    )
+
+    result = await session.execute(stmt)
+    links = result.scalars().all()
+
+    return [(link.user, link.role) for link in links]
 
 
 async def main() -> None:

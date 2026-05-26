@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import Integer
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 from .base import Base
@@ -14,14 +14,15 @@ if TYPE_CHECKING:
 
 class User(Base):
     max_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
-    chat_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
-    first_name: Mapped[str]
-    last_name: Mapped[Optional[str]]
-    username: Mapped[Optional[str]]
-    name: Mapped[Optional[str]]
+    chat_id: Mapped[int] = mapped_column(Integer, unique=False, nullable=False)
+    first_name: Mapped[str] = mapped_column(String, nullable=False)
+    last_name: Mapped[Optional[str]] = mapped_column(String, nullable=False)
+    username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    telephone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    is_bot: Mapped[bool]
-    last_activity_time: Mapped[int]
+    is_bot: Mapped[bool] = mapped_column(String, nullable=False)
+    last_activity_time: Mapped[int] = mapped_column(String, nullable=False)
 
     mylist_links: Mapped[list[UserMyListAssociation]] = relationship(
         back_populates="user",

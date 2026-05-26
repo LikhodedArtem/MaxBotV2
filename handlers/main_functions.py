@@ -1,5 +1,6 @@
 import asyncio
 from typing import Optional
+import re
 from uuid import UUID
 
 from broker import broker
@@ -18,7 +19,7 @@ from crud import (
     delete_mylist_value_by_id,
     update_mylist_value_value_by_id,
     update_made_of_mylist_value,
-    update_delete_to_mylist_by_uuid, get_mylist_with_values_by_uuid,
+    update_delete_to_mylist_by_uuid, get_mylist_with_values_by_uuid, add_telephone_to_user_by_max_id,
 )
 
 from messages.message_schemes import Message, ContactMessage, Sender
@@ -39,7 +40,8 @@ async def dialog_removed(sender: Sender):
 @broker.check([Event.BOT_STARTED, Event.MESSAGE_COMMAND("reg")])
 async def reg_get(sender: Sender):
     async with db_helper.session_factory() as session:
-        if await get_user_by_max_id(session, sender.user_id) is None:
+        user = await get_user_by_max_id(session, sender.user_id)
+        if user is None or user.telephone is None:
             await sender.answer(
                 "📞Для продолжения работы, необходимо нажать на кнопку, для получения ваших данных",
                 "inline_keyboard",
@@ -60,13 +62,23 @@ async def reg_set(message: ContactMessage):
     try:
         async with db_helper.session_factory() as session:
             user = await get_user_by_max_id(session, message.sender.user_id)
+            raw_vcf = message.body.attachments[0].payload.vcf_info
+            telephone = re.search(r'TEL;TYPE=cell:(\d+)', raw_vcf).group(1)
+
             if user is None:
-                user_data = message.sender.model_dump()
+                user_data = message.body.attachments[0].payload.max_info.model_dump()
+                user_data["telephone"] = telephone
                 user_data["chat_id"] = message.recipient.chat_id
 
                 await create_user(session, user_data)
 
                 await message.answer("✅Вы успешно зарегистрировались!")
+
+            elif user.telephone is None:
+                await add_telephone_to_user_by_max_id(session, message.real_user_id, telephone)
+
+                await message.answer("✅Вы успешно зарегистрировались!")
+
             else:
                 await message.answer("✅Вы уже были зарегистрированы!")
 
@@ -121,7 +133,8 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
     )
 
     mylist_values = mylist_values_to_form(mylist.values)
-    mylist_owners, my_role = mylist_owners_to_form(mylist.user_links, message.real_user_id)
+    user_info = [(link.user, link.role) for link in mylist.user_links]
+    mylist_owners, my_role = mylist_owners_to_form(user_info, message.real_user_id)
 
     if mylist.deleted:
         emoji = "🗑"
@@ -147,11 +160,12 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
         payload = Keyboards.change_deleted_list(mylist.uuid)
 
     if view_owners:
-        text += f"\n{mylist_owners}"
-        if my_role == MyListUserRole.USER:
-            text += "\n**У вас недостаточно прав для изменения списка**"
+        text += f"{mylist_owners}\n"
 
     text += f"<b>Дата создания</b>: {mylist.create_time}\n"
+
+    if my_role == MyListUserRole.USER:
+        text += "\n**У вас недостаточно прав для изменения списка**"
 
     if not edit:
         await message.answer(

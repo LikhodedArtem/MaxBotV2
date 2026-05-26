@@ -1,5 +1,6 @@
 __all__ = ["mylist_values_to_form", "mylist_owners_to_form", "format_get_mylist_value_id_by_number"]
 
+from typing import Optional
 from uuid import UUID
 
 from core.models import db_helper, MyListValue, MyListUserRole, User
@@ -29,7 +30,7 @@ def mylist_values_to_form(
 
 
 def mylist_owners_to_form(
-        user_links, user_id: int
+        user_info: list[tuple], user_id: int, below_then: Optional[MyListUserRole] = None,
 ) -> tuple[str, MyListUserRole]:
     author_text = "<b>Автор:</b>\n"
     admins_text = "<b>Администраторы:</b>\n"
@@ -41,24 +42,31 @@ def mylist_owners_to_form(
 
     my_role = MyListUserRole
 
-    for link in user_links:
-        user: User = link.user
-        is_you = user.max_id = user_id
+    for info in user_info:
+        user: User = info[0]
+        is_you = user.max_id == user_id
         if is_you:
-            my_role = link.role
+            my_role = info[1]
         add_text = " <i>(Вы)</i>\n" if is_you else "\n"
         fio = f"{user.first_name}" + f" {user.last_name}" if user.last_name is not None else ""
-        match link.role:
+        match info[1]:
             case MyListUserRole.AUTHOR:
+                if below_then is not None:
+                    continue
                 author += f"\t- {fio}" + add_text
             case MyListUserRole.ADMIN:
+                if below_then == MyListUserRole.ADMIN or below_then == MyListUserRole.USER:
+                    continue
                 admins.append(f"\t- {fio}" + add_text)
             case MyListUserRole.USER:
+                if below_then == MyListUserRole.USER:
+                    continue
                 users.append(f"\t- {fio}" + add_text)
 
     final_text = author_text + author
     if admins:
-        final_text += admins_text + "".join(admins)
+        if below_then == MyListUserRole.AUTHOR or below_then is None:
+            final_text += admins_text + "".join(admins)
     if users:
         final_text += users_text + "".join(users)
 

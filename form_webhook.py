@@ -34,26 +34,26 @@ async def form_webhook_to_query(data: dict) -> list[Query]:
                     except Exception:
                         return []
 
-                q1 = Query(event=Event.MESSAGE_CREATED, message=message)
-                q2 = Query(event=Event.MESSAGE_CREATED(text=text), message=message)
+                # q1 = Query(event=Event.MESSAGE_CREATED, message=message)
+                q1 = Query(event=Event.MESSAGE_CREATED(text=text), message=message)
 
-                return [q1, q2]
+                return [q1]
 
             case "message_callback":
                 payload = restore_payload(data["callback"]["payload"])
                 message = Message(**data["message"])
                 callback = Callback(**data["callback"])
 
+                # q1 = Query(
+                #     event=Event.MESSAGE_CALLBACK, message=message, callback=callback
+                # )
                 q1 = Query(
-                    event=Event.MESSAGE_CALLBACK, message=message, callback=callback
-                )
-                q2 = Query(
                     event=Event.MESSAGE_CALLBACK(payload=payload),
                     message=message,
                     callback=callback,
                 )
 
-                return [q1, q2]
+                return [q1]
 
             case "bot_started":
                 q1 = Query(

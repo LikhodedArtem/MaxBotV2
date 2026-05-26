@@ -38,7 +38,9 @@ class Keyboards:
                 "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
             )
 
-            keyboard = [[btn_view_owners], [btn1, btn2], [btn3, btn4], [btn5, btn_escape]]
+            btn_share = CallbackButton.create("✏️Работа с участниками списка", p.add(inner=("owners", "work")))
+
+            keyboard = [[btn_view_owners], [btn1, btn2], [btn3, btn4], [btn5, btn_escape], [btn_share]]
         else:
             keyboard = [[btn_view_owners], [btn_escape]]
 
@@ -168,3 +170,18 @@ class Keyboards:
         keyboad = [[btn1]]
 
         return {"buttons": keyboad}
+
+    @classmethod
+    def work_with_lists_owners(cls, payload_uuid: UUID) -> Keyboard:
+        p = PayloadStart(type="list", uuid=payload_uuid, action="change", inner="owners")
+
+        btn1 = CallbackButton.create("📤Поделиться списком", p.add(inner=("share", "get")))
+        btn2 = CallbackButton.create("🗑Удалить участника", p.add(inner=("delete", "get")))
+        btn3 = CallbackButton.create("🔼Повысить в звании", p.add(inner=("lvl_up", "get")))
+        btn4 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
+
+
+        keyboard = [[btn1], [btn2], [btn3], [btn4]]
+
+        return {"buttons": keyboard}
+

@@ -28,7 +28,7 @@ async def reg_checker(queries: list[Query]) -> bool:
                     session, message.real_user_id
                 )
 
-            if user is None:
+            if user is None or user.telephone is None:
                 await message.answer(
                     "❌Для работы с ботом необходимо сначала зарегистрироваться. /reg"
                 )

@@ -53,6 +53,10 @@ class MessageMixin(BaseModel):
     sender: Sender
 
     @property
+    def real_user(self) -> UserMixin:
+        return self.sender if self.sender.user_id != bot_info.my_id else self.recipient
+
+    @property
     def real_user_id(self) -> int:
         return self.sender.user_id if self.sender.user_id != bot_info.my_id else self.recipient.user_id
 
@@ -325,4 +329,4 @@ class ContactAttachment(BaseModel):
 class ContactPayload(BaseModel):
     vcf_info: str
     max_info: Sender
-    hash: str
+    hash: Optional[str] = None

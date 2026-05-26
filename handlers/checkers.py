@@ -10,6 +10,9 @@ async def list_checker(message: Message, payload_uuid: UUID, status_inner: Optio
     async with db_helper.session_factory() as session:
         mylist = await get_mylist_by_uuid(session, payload_uuid)
 
+    if status_inner is None:
+        return True
+
     if mylist is None:
         await message.answer("❌Работа с этим списком прекращена")
         return False

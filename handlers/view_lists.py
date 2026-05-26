@@ -6,9 +6,10 @@ from broker.event import Event
 from buttons.keyboards import Keyboards
 from core.config import bot_info
 from core.global_names import GN
-from core.models import db_helper
+from core.models import db_helper, MyListUserRole
 from handlers.checkers import list_checker
-from crud import get_mylists_by_max_id, delete_deleted_mylists_by_max_id, delete_deleted_from_mylists_by_uuid
+from crud import get_mylists_by_max_id, delete_deleted_mylists_by_max_id, delete_deleted_from_mylists_by_uuid, \
+    add_user_to_list, get_users_with_roles_by_mylist_uuid
 
 from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
@@ -31,7 +32,7 @@ async def view_lists(message: Message, page: int = 1, edit: bool = False, delete
     if mylists is None:
         if not first: return
 
-        text = "❌У вас нет ни одного списка. /new_list" if not deleted else "❌Корзина пуста"
+        text = "❌У вас нет ни одного списка" if not deleted else "❌Корзина пуста"
         if not edit:
             await message.answer(
                 text,
@@ -179,3 +180,97 @@ async def bin_recover_list(message: Message, payload_uuid: UUID):
 
     await asyncio.sleep(GN.sleep_time)
     await view_list(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "work")}
+    ),
+    allowed=GN.list_view,
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_work(message: ContactMessage, payload_uuid: UUID):
+    status = create_status(name="Work-With-Owners")
+    await message.status(status)
+
+    await message.answer("Выберите действие с участниками списка:", "inline_keyboard", payload=Keyboards.work_with_lists_owners(payload_uuid))
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "share", "get")}
+    ),
+    allowed="Work-With-Owners",
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_owners_share_get(message: Message, payload_uuid: UUID):
+    await message.answer("Нажмите <b>📎 -> \"Контакты\"</b>, и выберите пользователя, с которым хотите поделиться списком")
+
+    status = create_status(type="list", uuid=payload_uuid, action="change", inner=("owners", "share", "set"))
+    await message.status(status=status)
+
+
+
+@broker.check(
+    Event.STATUS_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "share", "set")}
+    ),
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_owners_share_set(message: Message, payload_uuid: UUID):
+    if not isinstance(message, ContactMessage):
+        return
+
+    user_data = message.body.attachments[0].payload.max_info.model_dump()
+    user_data["chat_id"] = message.recipient.chat_id
+    async with db_helper.session_factory() as session:
+        await add_user_to_list(session, payload_uuid, user_data)
+
+    await message.answer("✅Пользователь добавлен")
+
+    await message.clear_status()
+
+    await view_list(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "delete", "get")}
+    ),
+    allowed="Work-With-Owners",
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_owners_delete_get(message: Message, payload_uuid: UUID):
+    async with db_helper.session_factory() as session:
+        users = await get_users_with_roles_by_mylist_uuid(session, payload_uuid)
+
+    my_id = message.real_user_id
+    my_role = MyListUserRole
+    for info in users:
+        user, role = info
+        if user.max_id == my_id:
+            my_role = role
+            break
+
+    owners_text, _ = mylist_owners_to_form(users, my_id, my_role)
+
+    status = create_status(type="list", action="change", inner=("owners", "delete", "set"))
+    await message.status(status)
+
+    await message.answer(owners_text)
+
+
+@broker.check(
+    Event.STATUS_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "delete", "set")}
+    ),
+    checkers=list_checker,
+    compare_uuids=True,
+    without_allowed=False
+)
+async def list_owners_delete_set(message: Message, payload_uuid: UUID):
+    pass
