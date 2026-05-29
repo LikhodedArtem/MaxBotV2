@@ -13,8 +13,6 @@ async def list_checker(message: Message, payload_uuid: UUID, status_inner: Optio
 
     users_ids = [info[0].max_id for info in users]
 
-    if status_inner is None:
-        return True
 
     if mylist is None:
         await message.answer("❌Работа с этим списком прекращена")

@@ -347,7 +347,7 @@ async def list_owners_escape(message: Message, payload_uuid: UUID):
 
 @broker.check(
     Event.MESSAGE_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": ("escape", "forever", "first")}
+        payload={"type": "list", "action": "change", "inner": ("forever", "escape", "first")}
     ),
     checkers=list_checker,
     allowed=GN.list_view,
@@ -358,18 +358,18 @@ async def first_escape_forever(message: Message, payload_uuid: UUID) -> None:
         "Вы уверены, что хотите <b>навсегда покинуть</b> список?",
         "inline_keyboard",
         payload=Keyboards.yes_no(
-            type="list", action="change", payload_uuid=payload_uuid, inner=("escape", "forever", "second")
+            type="list", action="change", payload_uuid=payload_uuid, inner=("forever", "escape", "second")
         ),
     )
 
-    await message.status(name="Escape-Forever")
+    await message.status(name="Forever-Escape")
 
 
 @broker.check(
     Event.MESSAGE_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": ("escape", "forever", "second", "yes")}
+        payload={"type": "list", "action": "change", "inner": ("forever", "escape", "second", "yes")}
     ),
-    allowed="Escape-Forever",
+    allowed="Forever-Escape",
     checkers=list_checker,
     compare_uuids=True,
 )
@@ -378,16 +378,16 @@ async def second_escape_forever(message: Message, payload_uuid: UUID) -> None:
         "Вы <b>точно</b> уверены, что хотите <b>навсегда покинуть</b> список?",
         "inline_keyboard",
         payload=Keyboards.yes_no(
-            type="list", action="change", payload_uuid=payload_uuid, inner=("escape", "forever", "final")
+            type="list", action="change", payload_uuid=payload_uuid, inner=("forever", "escape", "final")
         ),
     )
 
 
 @broker.check(
     Event.MESSAGE_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": ("escape", "forever", "final", "yes")}
+        payload={"type": "list", "action": "change", "inner": ("forever", "escape", "final", "yes")}
     ),
-    allowed="Escape-Forever",
+    allowed="Forever-Escape",
     checkers=list_checker,
     compare_uuids=True,
 )
@@ -408,13 +408,13 @@ async def final_escape_forever(message: Message, payload_uuid: UUID) -> None:
 @broker.check(
     [
         Event.MESSAGE_CALLBACK(
-            payload={"type": "list", "action": "change", "inner": ("escape", "forever", "second", "no")}
+            payload={"type": "list", "action": "change", "inner": ("forever", "escape", "second", "no")}
         ),
         Event.MESSAGE_CALLBACK(
-            payload={"type": "list", "action": "change", "inner": ("escape", "forever", "final", "no")}
+            payload={"type": "list", "action": "change", "inner": ("forever", "escape", "final", "no")}
         ),
     ],
-    "Escape-Forever",
+    "Forever-Escape",
     checkers=list_checker,
     compare_uuids=True,
 )

@@ -35,6 +35,9 @@ class BotInfo(BaseModel):
     my_id: int = 257767688 # test
     # my_id: int = 313010077 # main
 
+    statuses_life_time_seconds: int = 600
+    statuses_life_time_check_seconds: int = 60
+
 
 bot_info = BotInfo()
 

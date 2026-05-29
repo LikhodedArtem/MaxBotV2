@@ -490,6 +490,8 @@ class EventBroker:
 
         all_handlers = self.get_handlers_from_event_with_status(event, status)
 
+        print("$all_handlers", all_handlers)
+
         if not all_handlers:
             return
 

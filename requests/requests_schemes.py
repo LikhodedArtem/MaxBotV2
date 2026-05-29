@@ -50,7 +50,7 @@ class MyDeleteRequest(MixinMyRequest):
 
 class NewMessageData(BaseModel):
     text: str
-    attachments: Optional[list[Attachments]]
+    attachments: Optional[list[Attachments]] = None
     # link: Optional[str] = None # Не доделано
     notify: Optional[bool] = True
     format: Literal["html", "markdown"] = "html"

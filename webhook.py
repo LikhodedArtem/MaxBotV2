@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -10,12 +11,19 @@ from pprint import pprint
 from broker import broker
 from core.config import bot_info
 from form_webhook import form_webhook_to_query
+from status.clear_old_statuses import cleanup_statuses_loop
 from status.status_functions import add_status_query
 
 from handlers import *
 
-app = FastAPI()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    cleanup_task = asyncio.create_task(cleanup_statuses_loop())
+    yield
+    cleanup_task.cancel()
+
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/ping")
 async def ping_pong():

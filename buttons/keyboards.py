@@ -44,7 +44,7 @@ class Keyboards:
 
             keyboard = [[btn1, btn2], [btn3, btn4], [btn_delete], [btn_view_owners], [btn_owners], [btn_escape]]
         else:
-            btn_escape = CallbackButton.create("Покинуть список⬆️", p.add(inner=("escape", "forever", "first")))
+            btn_escape = CallbackButton.create("Покинуть список⬆️", p.add(inner=("forever", "escape", "first")))
 
             keyboard = [[btn1, btn2], [btn3, btn4], [btn_view_owners], [btn_escape]]
 
