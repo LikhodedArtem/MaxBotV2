@@ -9,7 +9,8 @@ from core.global_names import GN
 from core.models import db_helper, MyListUserRole
 from handlers.checkers import list_checker
 from crud import get_mylists_by_max_id, delete_deleted_mylists_by_max_id, delete_deleted_from_mylists_by_uuid, \
-    add_user_to_list, get_users_with_roles_by_mylist_uuid
+    add_user_to_list, get_users_with_roles_by_mylist_uuid, get_mylist_by_uuid, get_user_from_association_by_number, \
+    delete_user_from_association_by_id, delete_user_from_mylist_by_max_id_and_uuid
 
 from messages.message_schemes import Message, ContactMessage, Sender
 from status.status_functions import create_status
@@ -128,10 +129,11 @@ async def bin(message: Message):
     allowed={"type": "lists", "action": "view"}
 )
 async def bin_clear(message: Message):
+    await message.answer("Вы уверены, что хотите <b>очистить</b> корзину?", "inline_keyboard",
+                         payload=Keyboards.yes_no(type="lists", action="view", inner="clear"))
+
     await message.clear_status()
     await message.status(name="Clear-Bin")
-
-    await message.answer("Вы уверены, что хотите <b>очистить</b> корзину?", "inline_keyboard", payload=Keyboards.yes_no(type="lists", action="view", inner="clear"))
 
 
 @broker.check(
@@ -190,11 +192,16 @@ async def bin_recover_list(message: Message, payload_uuid: UUID):
     checkers=list_checker,
     compare_uuids=True,
 )
-async def list_work(message: ContactMessage, payload_uuid: UUID):
+async def list_work_with_owners(message: Message, payload_uuid: UUID):
+    async with db_helper.session_factory() as session:
+        users = await get_users_with_roles_by_mylist_uuid(session, payload_uuid)
+
+    owners_text, my_role = mylist_owners_to_form(users, message.real_user_id)
+
+    await message.answer(f"✏️Выберите действие с участниками списка: \n{owners_text}", "inline_keyboard", payload=Keyboards.work_with_lists_owners(payload_uuid))
+
     status = create_status(name="Work-With-Owners")
     await message.status(status)
-
-    await message.answer("Выберите действие с участниками списка:", "inline_keyboard", payload=Keyboards.work_with_lists_owners(payload_uuid))
 
 
 @broker.check(
@@ -206,10 +213,10 @@ async def list_work(message: ContactMessage, payload_uuid: UUID):
     compare_uuids=True,
 )
 async def list_owners_share_get(message: Message, payload_uuid: UUID):
-    await message.answer("Нажмите <b>📎 -> \"Контакты\"</b>, и выберите пользователя, с которым хотите поделиться списком")
+    await message.answer("Нажмите <b>📎 -> \"Контакты\"</b>, и выберите пользователя, с которым хотите поделиться списком", "inline_keyboard", payload=Keyboards.escape("list", "change", payload_uuid, ("owners", "mini", "escape")))
 
     status = create_status(type="list", uuid=payload_uuid, action="change", inner=("owners", "share", "set"))
-    await message.status(status=status)
+    await message.status(status)
 
 
 
@@ -248,29 +255,172 @@ async def list_owners_delete_get(message: Message, payload_uuid: UUID):
     async with db_helper.session_factory() as session:
         users = await get_users_with_roles_by_mylist_uuid(session, payload_uuid)
 
-    my_id = message.real_user_id
-    my_role = MyListUserRole
+    owners_text = ""
+    i = 1
     for info in users:
-        user, role = info
-        if user.max_id == my_id:
-            my_role = role
-            break
+        if info[1] == MyListUserRole.AUTHOR:
+            continue
 
-    owners_text, _ = mylist_owners_to_form(users, my_id, my_role)
+        first_name = info[0].first_name
+        last_name = " " + info[0].last_name if info[0].last_name is not None else ""
 
-    status = create_status(type="list", action="change", inner=("owners", "delete", "set"))
+        owners_text += f"\t/{i} {first_name}{last_name}\n"
+        i += 1
+
+    if not owners_text:
+        await message.answer("❌Вы не можете никого удалить")
+        await list_owners_mini_escape(message=message, payload_uuid=payload_uuid)
+        return
+
+    text = (f"🗑Вы имеете возможность удалить следующих <b>участников</b>:\n\n"
+            f"{owners_text}"
+            f"\n<b>Нажмите на номер</b> участника для его удаления")
+
+    await message.answer(text, "inline_keyboard", payload=Keyboards.escape("list", "change", payload_uuid, ("owners", "mini", "escape")))
+
+    status = create_status(type="list", action="change", inner=("owners", "delete", "set"), uuid=payload_uuid)
     await message.status(status)
-
-    await message.answer(owners_text)
 
 
 @broker.check(
-    Event.STATUS_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": ("owners", "delete", "set")}
+    Event.MESSAGE_COMMAND,
+    allowed={"type": "list", "action": "change", "inner": ("owners", "delete", "set")},
+    checkers=list_checker,
+    compare_uuids=True,
+    without_allowed=False,
+)
+async def list_owners_delete_set(message: Message, payload_uuid: UUID):
+    text = message.body.text
+    if len(text) < 2 or list(text)[0] != "/":
+        return
+    text_id = int(text[1:])
+    if text_id < 1:
+        await message.answer("❌Указан неверный номер")
+        await list_owners_mini_escape(message=message, payload_uuid=payload_uuid)
+        return
+
+    async with db_helper.session_factory() as session:
+        mylist = await get_mylist_by_uuid(session, payload_uuid)
+        user = await get_user_from_association_by_number(session, mylist.id, text_id)
+        if user is None:
+            await message.answer("❌Указан неверный номер")
+            await list_owners_mini_escape(message=message, payload_uuid=payload_uuid)
+            return
+        await delete_user_from_association_by_id(session, mylist.id, user.user_id)
+
+    await message.answer("✅Участник удалён")
+
+    await list_owners_mini_escape(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "mini", "escape")}
     ),
+    allowed=[
+        {"type": "list", "action": "change", "inner": ("owners", "delete", "set")},
+        {"type": "list", "action": "change", "inner": ("owners", "share", "set")}
+    ],
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def list_owners_mini_escape(message: Message, payload_uuid: UUID):
+    await message.clear_status()
+
+    await list_work_with_owners(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("owners", "escape")}
+    ),
+    allowed="Work-With-Owners",
     checkers=list_checker,
     compare_uuids=True,
     without_allowed=False
 )
-async def list_owners_delete_set(message: Message, payload_uuid: UUID):
-    pass
+async def list_owners_escape(message: Message, payload_uuid: UUID):
+    await message.clear_status()
+
+    await view_list(message=message, payload_uuid=payload_uuid)
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("escape", "forever", "first")}
+    ),
+    checkers=list_checker,
+    allowed=GN.list_view,
+    compare_uuids=True,
+)
+async def first_escape_forever(message: Message, payload_uuid: UUID) -> None:
+    await message.answer(
+        "Вы уверены, что хотите <b>навсегда покинуть</b> список?",
+        "inline_keyboard",
+        payload=Keyboards.yes_no(
+            type="list", action="change", payload_uuid=payload_uuid, inner=("escape", "forever", "second")
+        ),
+    )
+
+    await message.status(name="Escape-Forever")
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("escape", "forever", "second", "yes")}
+    ),
+    allowed="Escape-Forever",
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def second_escape_forever(message: Message, payload_uuid: UUID) -> None:
+    await message.edit(
+        "Вы <b>точно</b> уверены, что хотите <b>навсегда покинуть</b> список?",
+        "inline_keyboard",
+        payload=Keyboards.yes_no(
+            type="list", action="change", payload_uuid=payload_uuid, inner=("escape", "forever", "final")
+        ),
+    )
+
+
+@broker.check(
+    Event.MESSAGE_CALLBACK(
+        payload={"type": "list", "action": "change", "inner": ("escape", "forever", "final", "yes")}
+    ),
+    allowed="Escape-Forever",
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def final_escape_forever(message: Message, payload_uuid: UUID) -> None:
+    await message.delete()
+
+    async with db_helper.session_factory() as session:
+        await delete_user_from_mylist_by_max_id_and_uuid(session, payload_uuid, message.real_user_id)
+
+    await message.answer("✅Вы покинули список")
+
+    await message.clear_status()
+
+    await asyncio.sleep(GN.sleep_time)
+    await help(message=message)
+
+
+@broker.check(
+    [
+        Event.MESSAGE_CALLBACK(
+            payload={"type": "list", "action": "change", "inner": ("escape", "forever", "second", "no")}
+        ),
+        Event.MESSAGE_CALLBACK(
+            payload={"type": "list", "action": "change", "inner": ("escape", "forever", "final", "no")}
+        ),
+    ],
+    "Escape-Forever",
+    checkers=list_checker,
+    compare_uuids=True,
+)
+async def cancel_escape_forever(message: Message, payload_uuid: UUID) -> None:
+    await message.delete()
+    await message.clear_status()
+
+    status = create_status(type="list", action="view", uuid=payload_uuid)
+    await message.status(status)

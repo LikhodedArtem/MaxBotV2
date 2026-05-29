@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 class MyListUserRole(PyEnum):
     AUTHOR = "author"
     USER = "user"
-    ADMIN = "admin"
 
 
 class UserMyListAssociation(Base):

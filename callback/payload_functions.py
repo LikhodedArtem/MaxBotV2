@@ -54,7 +54,7 @@ def restore_payload(payload: str) -> Payload:
             elif bool(re.fullmatch(r"i\d+", tag)):
                 inner += (value,)
             else:
-                raise ValueError("Несуществующий ключ в Payload")
+                raise ValueError(f"Несуществующий ключ {tag} в Payload")
 
         data["inner"] = inner
 
@@ -63,4 +63,4 @@ def restore_payload(payload: str) -> Payload:
         return Payload(**data)
 
     except Exception as e:
-        raise ValueError(f"Неправильный вид Payload по причине: {e}")
+        raise ValueError(f"Неправильный вид Payload по причине: {str(e)}")

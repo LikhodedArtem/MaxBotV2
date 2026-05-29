@@ -27,22 +27,26 @@ class Keyboards:
             btn_view_owners = CallbackButton.create("👀Показать участников списка", p.add(inner=("view", "owners")))
         else:
             btn_view_owners = CallbackButton.create("👥Скрыть участников списка", p.add(inner=("hide", "owners")))
+
         btn_escape = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
 
-        if user_role != MyListUserRole.USER:
-            btn1 = CallbackButton.create("Название", p.add(inner=("field", "title")))
-            btn2 = CallbackButton.create("Описание", p.add(inner=("field", "description")))
-            btn3 = CallbackButton.create("Тип", p.add(inner=("field", "type")))
-            btn4 = CallbackButton.create("Содержимое", p.add(inner=("values", "start")))
-            btn5 = CallbackButton.create(
+        btn1 = CallbackButton.create("Название", p.add(inner=("field", "title")))
+        btn2 = CallbackButton.create("Описание", p.add(inner=("field", "description")))
+        btn3 = CallbackButton.create("Тип", p.add(inner=("field", "type")))
+        btn4 = CallbackButton.create("Содержимое", p.add(inner=("values", "start")))
+
+
+        if user_role == MyListUserRole.AUTHOR:
+            btn_delete = CallbackButton.create(
                 "🗑Удалить", p.add(action="delete", inner="start", cancel_inner=True)
             )
+            btn_owners = CallbackButton.create("✏️Работа с участниками списка", p.add(inner=("owners", "work")))
 
-            btn_share = CallbackButton.create("✏️Работа с участниками списка", p.add(inner=("owners", "work")))
-
-            keyboard = [[btn_view_owners], [btn1, btn2], [btn3, btn4], [btn5, btn_escape], [btn_share]]
+            keyboard = [[btn1, btn2], [btn3, btn4], [btn_delete], [btn_view_owners], [btn_owners], [btn_escape]]
         else:
-            keyboard = [[btn_view_owners], [btn_escape]]
+            btn_escape = CallbackButton.create("Покинуть список⬆️", p.add(inner=("escape", "forever", "first")))
+
+            keyboard = [[btn1, btn2], [btn3, btn4], [btn_view_owners], [btn_escape]]
 
         return {"buttons": keyboard}
 
@@ -60,7 +64,7 @@ class Keyboards:
         type: str,
         action: str,
         payload_uuid: Optional[UUID] = None,
-        inner: str | tuple[str] | None = None,
+        inner: str | tuple[str, ...] | None = None,
     ) -> Keyboard:
         p = PayloadStart(type=type, uuid=payload_uuid, action=action, inner=inner)
 
@@ -143,7 +147,7 @@ class Keyboards:
         p = PayloadStart(type="list", uuid=payload_uuid, action="change")
 
         btn1 = CallbackButton.create("Достать из корзины🗑⬆️", p.add(inner=("deleted", "get")))
-        btn2 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
+        btn2 = CallbackButton.create("Вернуться⬆️", p.add(inner=("deleted", "escape")))
 
         keyboard = [[btn1], [btn2]]
 
@@ -177,11 +181,18 @@ class Keyboards:
 
         btn1 = CallbackButton.create("📤Поделиться списком", p.add(inner=("share", "get")))
         btn2 = CallbackButton.create("🗑Удалить участника", p.add(inner=("delete", "get")))
-        btn3 = CallbackButton.create("🔼Повысить в звании", p.add(inner=("lvl_up", "get")))
-        btn4 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
+        btn3 = CallbackButton.create("Вернуться⬆️", p.add(inner="escape"))
 
-
-        keyboard = [[btn1], [btn2], [btn3], [btn4]]
+        keyboard = [[btn1], [btn2], [btn3]]
 
         return {"buttons": keyboard}
 
+    @classmethod
+    def escape(cls, type: str, action: str, payload_uuid: Optional[UUID] = None, inner: Optional[str | tuple[str, ...]] = None) -> Keyboard:
+        p = PayloadStart(type=type, uuid=payload_uuid, action=action, inner=inner)
+
+        btn_escape = CallbackButton.create("Вернуться⬆️", p.add())
+
+        keyboard = [[btn_escape]]
+
+        return {"buttons": keyboard}

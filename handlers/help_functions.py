@@ -30,14 +30,13 @@ def mylist_values_to_form(
 
 
 def mylist_owners_to_form(
-        user_info: list[tuple], user_id: int, below_then: Optional[MyListUserRole] = None,
+        user_info: list[tuple], user_id: int, without_me: bool = False
 ) -> tuple[str, MyListUserRole]:
     author_text = "<b>Автор:</b>\n"
     admins_text = "<b>Администраторы:</b>\n"
     users_text = "<b>Пользователи:</b>\n"
 
     author = ""
-    admins = []
     users = []
 
     my_role = MyListUserRole
@@ -47,26 +46,17 @@ def mylist_owners_to_form(
         is_you = user.max_id == user_id
         if is_you:
             my_role = info[1]
+        if without_me and is_you:
+            continue
         add_text = " <i>(Вы)</i>\n" if is_you else "\n"
         fio = f"{user.first_name}" + f" {user.last_name}" if user.last_name is not None else ""
         match info[1]:
             case MyListUserRole.AUTHOR:
-                if below_then is not None:
-                    continue
-                author += f"\t- {fio}" + add_text
-            case MyListUserRole.ADMIN:
-                if below_then == MyListUserRole.ADMIN or below_then == MyListUserRole.USER:
-                    continue
-                admins.append(f"\t- {fio}" + add_text)
+                author = f"\t- {fio}" + add_text
             case MyListUserRole.USER:
-                if below_then == MyListUserRole.USER:
-                    continue
                 users.append(f"\t- {fio}" + add_text)
 
-    final_text = author_text + author
-    if admins:
-        if below_then == MyListUserRole.AUTHOR or below_then is None:
-            final_text += admins_text + "".join(admins)
+    final_text = author_text + author if author else ""
     if users:
         final_text += users_text + "".join(users)
 

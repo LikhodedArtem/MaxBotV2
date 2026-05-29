@@ -202,12 +202,9 @@ class EventBroker:
 
         """
 
-        print("$get_handlers_from_event")
-
         current_node = self.current_to_node(current)
 
         if not isinstance(event, PayloadEvent):
-            print("$not PayloadEvent")
             return current_node.get(event, set())
         else:
             smth = self.get_handlers_from_payload_event(event, current_node)
@@ -492,8 +489,6 @@ class EventBroker:
         status = query.status
 
         all_handlers = self.get_handlers_from_event_with_status(event, status)
-
-        print("all_handlers", all_handlers)
 
         if not all_handlers:
             return

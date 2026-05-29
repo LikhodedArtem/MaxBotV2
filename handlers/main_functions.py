@@ -139,11 +139,9 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
     if mylist.deleted:
         emoji = "🗑"
         deleted = "<b>удалённого</b> "
-        delete_time = f"<b>Дата удаления</b>: {mylist.create_time}\n"
     else:
         emoji = "⚙️"
         deleted = ""
-        delete_time = ""
 
     text = (
         f"{emoji}Настройки вашего {deleted}списка:\n\n"
@@ -151,7 +149,6 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
         f"<b>Название</b>: {mylist_title}\n"
         f"<b>Описание</b>: {mylist_description}\n\n"
         f"<b>Содержание</b>:\n{mylist_values}\n"
-        f"{delete_time}"
     )
 
     if not deleted:
@@ -159,13 +156,13 @@ async def view_list(message: Message, payload_uuid: UUID, edit: bool = False, is
     else:
         payload = Keyboards.change_deleted_list(mylist.uuid)
 
-    if view_owners:
+    if view_owners or deleted:
         text += f"{mylist_owners}\n"
 
     text += f"<b>Дата создания</b>: {mylist.create_time}\n"
 
-    if my_role == MyListUserRole.USER:
-        text += "\n**У вас недостаточно прав для изменения списка**"
+    if deleted:
+        text += f"<b>Дата удаления</b>: {mylist.create_time}\n"
 
     if not edit:
         await message.answer(
@@ -205,9 +202,9 @@ async def list_field_get(
         type="list", uuid=payload_uuid, action="set", inner=("field", field)
     )
 
-    await message.status(status)
-
     await message.answer(text)
+
+    await message.status(status)
 
 
 @broker.check(
@@ -324,20 +321,25 @@ async def cancel_delete(message: Message, payload_uuid: UUID) -> None:
 
 
 @broker.check(
-    Event.MESSAGE_CALLBACK(
-        payload={"type": "list", "action": "change", "inner": "escape"}
-    ),
+    [
+        Event.MESSAGE_CALLBACK(
+            payload={"type": "list", "action": "change", "inner": "escape"}
+        ),
+        Event.MESSAGE_CALLBACK(
+            payload={"type": "list", "action": "change", "inner": ("deleted", "escape")}
+        )
+    ],
     allowed=GN.list_view,
     can_be_none=True
 )
-async def list_view_escape(message: Message, status_inner: tuple[str] | None) -> None:
+async def list_view_escape(message: Message, status_inner: tuple[str, ...] | None, payload_inner: tuple[str, ...]) -> None:
     await message.clear_status()
 
     if status_inner is not None and len(status_inner) > 0 and "from_lists" in status_inner:
         page = int(status_inner[-1])
 
         from .view_lists import view_lists
-        await view_lists(message=message, page=page)
+        await view_lists(message=message, page=page, deleted="deleted" in payload_inner)
     else:
         await help(message=message)
 
@@ -351,15 +353,6 @@ async def list_view_escape(message: Message, status_inner: tuple[str] | None) ->
     compare_uuids=True,
 )
 async def view_values(message: Message, payload_uuid: UUID) -> None:
-    status = create_status(
-        type="list",
-        uuid=payload_uuid,
-        action="view",
-        inner="values",
-        send_callback=False,
-    )
-    await message.status(status, send_callback=False)
-
     async with db_helper.session_factory() as session:
         mylist = await get_mylist_with_values_by_uuid(session, payload_uuid)
         values = mylist.values
@@ -371,6 +364,16 @@ async def view_values(message: Message, payload_uuid: UUID) -> None:
     await message.answer(
         text, "inline_keyboard", payload=Keyboards.change_list_values(payload_uuid)
     )
+
+    status = create_status(
+        type="list",
+        uuid=payload_uuid,
+        action="view",
+        inner="values",
+        send_callback=False,
+    )
+    await message.status(status)
+
 
 
 @broker.check(
@@ -410,7 +413,7 @@ async def add_value_set(message: Message, payload_uuid: UUID) -> None:
 
 
 @broker.check(
-    Event.MESSAGE_CALLBACK(payload={"type": "l", "action": ";"}),
+    Event.MESSAGE_CALLBACK(payload={"type": "list", "action": "change", "inner": ("values", "partly", "escape")}),
     allowed=[
         {"type": "list", "action": "change", "inner": ("values", "add", "set")},
         {"type": "list", "action": "change", "inner": ("values", "delete", "set")},
@@ -633,5 +636,5 @@ async def list_view_owners(message: Message, payload_uuid: UUID) -> None:
     checkers=list_checker,
     compare_uuids=True,
 )
-async def list_view_owners(message: Message, payload_uuid: UUID) -> None:
+async def list_hide_owners(message: Message, payload_uuid: UUID) -> None:
     await view_list(message=message, payload_uuid=payload_uuid, edit=True, view_owners=False)

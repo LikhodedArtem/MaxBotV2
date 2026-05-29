@@ -2,11 +2,11 @@ import asyncio
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
-from typing import Literal
+from typing import Literal, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy.exc import PendingRollbackError
+from sqlalchemy.exc import PendingRollbackError, IntegrityError
 
 from core.models import *
 
@@ -244,18 +244,33 @@ async def get_mylists_by_max_id(
     if user is None:
         return
 
-    stmt = (
-        select(MyList)
-        .join(MyList.user_links)
-        .where(
-            UserMyListAssociation.user_id == user.id,
-            MyList.deleted == deleted
+    if not deleted:
+        stmt = (
+            select(MyList)
+            .join(MyList.user_links)
+            .where(
+                UserMyListAssociation.user_id == user.id,
+                MyList.deleted == False
+            )
+            .order_by(MyList.id)
+            .limit(11)
+            .offset((page - 1) * 10)
+            .options(selectinload(MyList.user_links))
         )
-        .order_by(MyList.id)
-        .limit(11)
-        .offset((page - 1) * 10)
-        .options(selectinload(MyList.user_links))
-    )
+    else:
+        stmt = (
+            select(MyList)
+            .join(MyList.user_links)
+            .where(
+                UserMyListAssociation.user_id == user.id,
+                UserMyListAssociation.role == MyListUserRole.AUTHOR,
+                MyList.deleted == True
+            )
+            .order_by(MyList.id)
+            .limit(11)
+            .offset((page - 1) * 10)
+            .options(selectinload(MyList.user_links))
+        )
 
     result = await session.execute(stmt)
     mylists = result.scalars().all() or None
@@ -283,12 +298,14 @@ async def update_delete_to_mylist_by_uuid(
 async def delete_deleted_mylists_by_max_id(
     session: AsyncSession, max_id: int
 ) -> None:
+    user = await get_user_by_max_id(session, max_id)
+
     stmt = (
         select(MyList)
         .join(MyList.user_links)
         .where(
-            UserMyListAssociation.user_id == max_id,
-            MyList.deleted.is_(False)
+            UserMyListAssociation.user_id == user.id,
+            MyList.deleted.is_(True)
         )
         .options(selectinload(MyList.user_links))
     )
@@ -298,7 +315,36 @@ async def delete_deleted_mylists_by_max_id(
 
     for mylist in mylists:
         await session.delete(mylist)
+        await delete_associations_by_id(session, mylist.id)
 
+    await session.commit()
+
+
+async def delete_user_from_mylist_by_max_id_and_uuid(
+    session: AsyncSession, mylist_uuid: UUID, max_id: int
+):
+    user = await get_user_by_max_id(session, max_id)
+    mylist = await get_mylist_by_uuid(session, mylist_uuid)
+
+    stmt = (
+        delete(UserMyListAssociation)
+        .where(UserMyListAssociation.user_id == user.id,
+               UserMyListAssociation.mylist_id == mylist.id)
+    )
+
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def delete_associations_by_id(
+    session: AsyncSession, mylist_id: int
+) -> None:
+    stmt = (
+        delete(UserMyListAssociation)
+        .where(UserMyListAssociation.mylist_id == mylist_id)
+    )
+
+    await session.execute(stmt)
     await session.commit()
 
 
@@ -331,10 +377,13 @@ async def add_user_to_list(session: AsyncSession, mylist_uuid: UUID, user_data: 
         role=MyListUserRole.USER,
     )
 
-    session.add(link)
-    await session.commit()
-    await session.refresh(user)
-    await session.refresh(link)
+    try:
+        session.add(link)
+        await session.commit()
+        await session.refresh(user)
+        await session.refresh(link)
+    except IntegrityError:
+        return None
 
 
 async def add_telephone_to_user_by_max_id(
@@ -368,6 +417,42 @@ async def get_users_with_roles_by_mylist_uuid(
     links = result.scalars().all()
 
     return [(link.user, link.role) for link in links]
+
+
+async def get_user_from_association_by_number(
+    session: AsyncSession,
+    mylist_id: int,
+    number: int,
+) -> UserMyListAssociation | None:
+    stmt = (
+        select(UserMyListAssociation)
+        .where(UserMyListAssociation.mylist_id == mylist_id,
+               UserMyListAssociation.role != MyListUserRole.AUTHOR)
+        .offset(number - 1)
+        .limit(1)
+    )
+
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    return user
+
+
+async def delete_user_from_association_by_id(
+        session: AsyncSession,
+        mylist_id: int,
+        user_id: int,
+) -> None:
+    print("mylist_id:", mylist_id, "user_id:", user_id)
+
+    stmt = (
+        delete(UserMyListAssociation)
+        .where(UserMyListAssociation.mylist_id == mylist_id,
+               UserMyListAssociation.user_id == user_id)
+    )
+
+    await session.execute(stmt)
+    await session.commit()
 
 
 async def main() -> None:
